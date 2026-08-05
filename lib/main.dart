@@ -135,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email.text.trim(),
-        redirectTo: 'fitbodygym://auth-callback',
+        redirectTo: 'https://ingfernandorivera.github.io/APPFitbodygym/',
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
