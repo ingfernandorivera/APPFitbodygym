@@ -11,6 +11,8 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
   final password = TextEditingController();
   final confirmation = TextEditingController();
   bool loading = false;
+  bool showPassword = false;
+  bool showConfirmation = false;
   String? error;
   Future<void> save() async {
     if (password.text.length < 8) {
@@ -68,19 +70,29 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
                 const SizedBox(height: 28),
                 TextField(
                   controller: password,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: !showPassword,
+                  decoration: InputDecoration(
                     labelText: 'Nueva contraseña',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      tooltip: showPassword ? 'Ocultar contraseña' : 'Ver contraseña',
+                      onPressed: () => setState(() => showPassword = !showPassword),
+                      icon: Icon(showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: confirmation,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: !showConfirmation,
+                  decoration: InputDecoration(
                     labelText: 'Confirmar contraseña',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      tooltip: showConfirmation ? 'Ocultar contraseña' : 'Ver contraseña',
+                      onPressed: () => setState(() => showConfirmation = !showConfirmation),
+                      icon: Icon(showConfirmation ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                    ),
                   ),
                 ),
                 if (error != null)
