@@ -45,8 +45,30 @@ class FitBodyGymApp extends StatelessWidget {
   }
 }
 
-class SessionGate extends StatelessWidget {
+class SessionGate extends StatefulWidget {
   const SessionGate({super.key});
+
+  @override
+  State<SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends State<SessionGate> {
+  bool recoveringPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
+      Supabase.instance.client.auth.onAuthStateChange.listen((authState) {
+        if (!mounted) return;
+        if (authState.event == AuthChangeEvent.passwordRecovery) {
+          setState(() => recoveringPassword = true);
+        } else if (authState.event == AuthChangeEvent.signedOut) {
+          setState(() => recoveringPassword = false);
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +80,7 @@ class SessionGate extends StatelessWidget {
       builder: (context, snapshot) {
         final session = Supabase.instance.client.auth.currentSession;
         if (session == null) return const LoginScreen();
+        if (recoveringPassword) return const CreatePasswordScreen();
         final passwordCreated =
             session.user.userMetadata?['password_created'] == true;
         return passwordCreated
@@ -108,6 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final email = TextEditingController();
   final password = TextEditingController();
   bool loading = false;
+  bool recovering = false;
   String? error;
 
   Future<void> login() async {
@@ -132,6 +156,10 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => error = 'Escribe primero tu correo electrónico.');
       return;
     }
+    setState(() {
+      recovering = true;
+      error = null;
+    });
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email.text.trim(),
@@ -145,7 +173,16 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } on AuthException catch (e) {
-      setState(() => error = e.message);
+      final rateLimited = e.message.toLowerCase().contains('rate limit');
+      if (mounted) {
+        setState(
+          () => error = rateLimited
+              ? 'Se solicitaron demasiados correos. Espera una hora y vuelve a intentarlo una sola vez.'
+              : 'No se pudo enviar el correo de recuperación. Intenta de nuevo.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => recovering = false);
     }
   }
 
@@ -216,8 +253,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: recover,
-                  child: const Text('Olvidé mi contraseña'),
+                  onPressed: recovering ? null : recover,
+                  child: recovering
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Olvidé mi contraseña'),
                 ),
               ],
             ),

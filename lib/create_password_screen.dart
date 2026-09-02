@@ -75,9 +75,16 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
                     labelText: 'Nueva contraseña',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      tooltip: showPassword ? 'Ocultar contraseña' : 'Ver contraseña',
-                      onPressed: () => setState(() => showPassword = !showPassword),
-                      icon: Icon(showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      tooltip: showPassword
+                          ? 'Ocultar contraseña'
+                          : 'Ver contraseña',
+                      onPressed: () =>
+                          setState(() => showPassword = !showPassword),
+                      icon: Icon(
+                        showPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
                     ),
                   ),
                 ),
@@ -89,9 +96,16 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
                     labelText: 'Confirmar contraseña',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      tooltip: showConfirmation ? 'Ocultar contraseña' : 'Ver contraseña',
-                      onPressed: () => setState(() => showConfirmation = !showConfirmation),
-                      icon: Icon(showConfirmation ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      tooltip: showConfirmation
+                          ? 'Ocultar contraseña'
+                          : 'Ver contraseña',
+                      onPressed: () =>
+                          setState(() => showConfirmation = !showConfirmation),
+                      icon: Icon(
+                        showConfirmation
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
                     ),
                   ),
                 ),
