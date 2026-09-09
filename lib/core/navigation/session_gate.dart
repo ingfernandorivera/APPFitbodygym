@@ -7,7 +7,7 @@ import '../../features/auth/pages/setup_page.dart';
 import '../../features/membership/pages/membership_page.dart';
 import '../config/supabase_config.dart';
 
-class SessionGate extends StatelessWidget {
+class SessionGate extends StatefulWidget {
   const SessionGate({super.key});
 
   // Temporal mientras se prueban las pantallas sin depender del login.
@@ -18,8 +18,30 @@ class SessionGate extends StatelessWidget {
   );
 
   @override
+  State<SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends State<SessionGate> {
+  bool recoveringPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (SupabaseConfig.isConfigured) {
+      Supabase.instance.client.auth.onAuthStateChange.listen((authState) {
+        if (!mounted) return;
+        if (authState.event == AuthChangeEvent.passwordRecovery) {
+          setState(() => recoveringPassword = true);
+        } else if (authState.event == AuthChangeEvent.signedOut) {
+          setState(() => recoveringPassword = false);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (previewMode) {
+    if (SessionGate.previewMode) {
       return const MembershipScreen(previewMode: true);
     }
     if (!SupabaseConfig.isConfigured) {
@@ -30,6 +52,7 @@ class SessionGate extends StatelessWidget {
       builder: (context, _) {
         final session = Supabase.instance.client.auth.currentSession;
         if (session == null) return const LoginScreen();
+        if (recoveringPassword) return const CreatePasswordScreen();
         final passwordCreated =
             session.user.userMetadata?['password_created'] == true;
         return passwordCreated

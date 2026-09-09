@@ -18,6 +18,7 @@ class _LoginFormState extends State<LoginForm> {
   final email = TextEditingController();
   final password = TextEditingController();
   bool loading = false;
+  bool recovering = false;
   String? error;
 
   @override
@@ -49,6 +50,10 @@ class _LoginFormState extends State<LoginForm> {
       setState(() => error = 'Escribe primero tu correo electronico.');
       return;
     }
+    setState(() {
+      recovering = true;
+      error = null;
+    });
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email.text.trim(),
@@ -62,7 +67,16 @@ class _LoginFormState extends State<LoginForm> {
         );
       }
     } on AuthException catch (e) {
-      setState(() => error = e.message);
+      final rateLimited = e.message.toLowerCase().contains('rate limit');
+      if (mounted) {
+        setState(
+          () => error = rateLimited
+              ? 'Se solicitaron demasiados correos. Espera una hora y vuelve a intentarlo una sola vez.'
+              : 'No se pudo enviar el correo de recuperación. Intenta de nuevo.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => recovering = false);
     }
   }
 
@@ -103,8 +117,13 @@ class _LoginFormState extends State<LoginForm> {
         const SizedBox(height: 20),
         SubmitButton(label: 'INGRESAR', loading: loading, onPressed: login),
         TextButton(
-          onPressed: recover,
-          child: const Text('Olvide mi contrasena'),
+          onPressed: recovering ? null : recover,
+          child: recovering
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Olvide mi contrasena'),
         ),
         TextButton.icon(
           onPressed: () {
