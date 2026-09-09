@@ -10,11 +10,10 @@ import '../config/supabase_config.dart';
 class SessionGate extends StatefulWidget {
   const SessionGate({super.key});
 
-  // Temporal mientras se prueban las pantallas sin depender del login.
-  // Antes de publicar, cambiar el valor predeterminado nuevamente a false.
+  // Solo se activa explícitamente con --dart-define=PREVIEW_MODE=true.
   static const previewMode = bool.fromEnvironment(
     'PREVIEW_MODE',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   @override
