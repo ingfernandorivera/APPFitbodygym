@@ -26,6 +26,7 @@ class MembershipScreen extends StatefulWidget {
 
 class _MembershipScreenState extends State<MembershipScreen> {
   var selectedIndex = 0;
+  var trainingRevision = 0;
   late Future<Map<String, dynamic>?> profile;
 
   @override
@@ -91,19 +92,29 @@ class _MembershipScreenState extends State<MembershipScreen> {
           destinations: AuthenticatedDestinations.all,
           selectedIndex: selectedIndex,
           onDestinationSelected: (index) {
-            setState(() => selectedIndex = index);
+            setState(() {
+              selectedIndex = index;
+              if (index == 1) trainingRevision++;
+            });
           },
           onSignOut: signOut,
           pages: [
             HomePage(membership: membership),
             membership.active
-                ? const TrainingPage()
+                ? TrainingPage(key: ValueKey(trainingRevision))
                 : const LockedFeaturePage(
                     title: 'Entrenamiento bloqueado',
                     icon: Icons.fitness_center,
                   ),
             membership.active
-                ? const AiChatPage()
+                ? AiChatPage(
+                    onOpenTraining: () {
+                      setState(() {
+                        selectedIndex = 1;
+                        trainingRevision++;
+                      });
+                    },
+                  )
                 : const LockedFeaturePage(
                     title: 'Chat IA bloqueado',
                     icon: Icons.auto_awesome,
