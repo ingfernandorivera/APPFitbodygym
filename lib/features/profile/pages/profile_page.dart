@@ -100,9 +100,9 @@ class _ProfilePageState extends State<ProfilePage> {
             FeatureListItem(
               icon: Icons.person_outline,
               title: 'Nombre',
-              description: profile.fullName.isEmpty
-                  ? 'Pendiente de completar.'
-                  : profile.fullName,
+              description: widget.membership.name.isEmpty
+                  ? 'Pendiente de sincronizar desde administracion.'
+                  : widget.membership.name,
             ),
             FeatureListItem(
               icon: Icons.cake_outlined,

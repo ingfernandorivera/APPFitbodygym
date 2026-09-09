@@ -14,9 +14,6 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  late final fullName = TextEditingController(
-    text: widget.initialProfile.fullName,
-  );
   late DateTime? selectedBirthDate = _parseDate(
     widget.initialProfile.birthDate,
   );
@@ -84,7 +81,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   void dispose() {
-    fullName.dispose();
     birthDate.dispose();
     phone.dispose();
     goal.dispose();
@@ -95,7 +91,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> save() async {
     setState(() => saving = true);
     final profile = AppUserProfile(
-      fullName: fullName.text.trim(),
+      fullName: widget.initialProfile.fullName,
       birthDate: _databaseDate(selectedBirthDate),
       phone: phone.text.trim(),
       goal: goal.text.trim(),
@@ -112,13 +108,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          AppTextField(
-            controller: fullName,
-            labelText: 'Nombre completo',
-            prefixIcon: Icons.person_outline,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 14),
           AppTextField(
             controller: birthDate,
             labelText: 'Fecha de nacimiento',
