@@ -17,8 +17,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final fullName = TextEditingController(
     text: widget.initialProfile.fullName,
   );
+  late DateTime? selectedBirthDate = _parseDate(
+    widget.initialProfile.birthDate,
+  );
   late final birthDate = TextEditingController(
-    text: widget.initialProfile.birthDate,
+    text: _displayDate(selectedBirthDate),
   );
   late final phone = TextEditingController(text: widget.initialProfile.phone);
   late final goal = TextEditingController(text: widget.initialProfile.goal);
@@ -26,6 +29,58 @@ class _EditProfilePageState extends State<EditProfilePage> {
     text: widget.initialProfile.limitations,
   );
   bool saving = false;
+
+  static DateTime? _parseDate(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) return null;
+
+    final isoDate = DateTime.tryParse(normalized);
+    if (isoDate != null) return isoDate;
+
+    final parts = normalized.split('/');
+    if (parts.length != 3) return null;
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || month == null || year == null) return null;
+    final date = DateTime(year, month, day);
+    return date.year == year && date.month == month && date.day == day
+        ? date
+        : null;
+  }
+
+  static String _displayDate(DateTime? date) {
+    if (date == null) return '';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  static String _databaseDate(DateTime? date) {
+    if (date == null) return '';
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  Future<void> pickBirthDate() async {
+    final today = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: selectedBirthDate ?? DateTime(today.year - 18),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(today.year, today.month, today.day),
+      helpText: 'Selecciona tu fecha de nacimiento',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+      fieldLabelText: 'Fecha de nacimiento',
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      selectedBirthDate = selected;
+      birthDate.text = _displayDate(selected);
+    });
+  }
 
   @override
   void dispose() {
@@ -41,7 +96,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() => saving = true);
     final profile = AppUserProfile(
       fullName: fullName.text.trim(),
-      birthDate: birthDate.text.trim(),
+      birthDate: _databaseDate(selectedBirthDate),
       phone: phone.text.trim(),
       goal: goal.text.trim(),
       limitations: limitations.text.trim(),
@@ -68,8 +123,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
             controller: birthDate,
             labelText: 'Fecha de nacimiento',
             prefixIcon: Icons.cake_outlined,
-            keyboardType: TextInputType.datetime,
-            textInputAction: TextInputAction.next,
+            suffixIcon: const Icon(Icons.calendar_month_outlined),
+            readOnly: true,
+            onTap: pickBirthDate,
           ),
           const SizedBox(height: 14),
           AppTextField(
