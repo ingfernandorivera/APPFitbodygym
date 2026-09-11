@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../assessment/data/training_profile_store.dart';
 import '../../assessment/models/training_profile.dart';
 import '../../assessment/pages/training_assessment_page.dart';
-import '../../training/data/demo_workout_generator.dart';
 import '../../training/data/workout_plan_store.dart';
 import '../data/ai_chat_service.dart';
 
@@ -54,47 +53,6 @@ class _AiChatPageState extends State<AiChatPage> {
     });
   }
 
-  Future<TrainingProfile?> ensureProfile() async {
-    final saved = await TrainingProfileStore().load();
-    if (saved != null || !mounted) return saved;
-    addMessage(
-      'Primero necesito tu evaluacion para preparar una rutina segura. Completa estos datos y regresaras al chat.',
-    );
-    final profile = await Navigator.push<TrainingProfile>(
-      context,
-      MaterialPageRoute(builder: (_) => const TrainingAssessmentPage()),
-    );
-    return profile;
-  }
-
-  Future<void> createRoutine() async {
-    if (working) return;
-    setState(() => working = true);
-    try {
-      final profile = await ensureProfile();
-      if (profile == null) {
-        if (mounted) {
-          addMessage(
-            'No se creo la rutina porque la evaluacion quedo pendiente.',
-          );
-        }
-        return;
-      }
-      final plan = DemoWorkoutGenerator().generate(profile);
-      await WorkoutPlanStore().save(plan);
-      if (!mounted) return;
-      addMessage(
-        'Listo: cree y guarde "${plan.name}" con ${plan.days.length} dias por semana para ${profile.goal.toLowerCase()}. Ya esta disponible en Entrenar.',
-      );
-    } catch (_) {
-      if (mounted) {
-        addMessage('No pude guardar la rutina. Intenta de nuevo.');
-      }
-    } finally {
-      if (mounted) setState(() => working = false);
-    }
-  }
-
   Future<void> reviewProfile() async {
     final saved = await TrainingProfileStore().load();
     if (!mounted) return;
@@ -116,51 +74,40 @@ class _AiChatPageState extends State<AiChatPage> {
     if (text.isEmpty || working) return;
     controller.clear();
     addMessage(text, fromUser: true);
-    final normalized = text.toLowerCase();
-    if (normalized.contains('rutina') ||
-        normalized.contains('entrenamiento') ||
-        normalized.contains('ejercicio')) {
-      await createRoutine();
-    } else if (normalized.contains('perfil') ||
-        normalized.contains('evaluacion') ||
-        normalized.contains('datos')) {
-      await reviewProfile();
-    } else if (normalized.contains('entrenar') ||
-        normalized.contains('guardada')) {
-      addMessage('Abriendo tu rutina activa en Entrenar.');
-      widget.onOpenTraining();
-    } else {
-      setState(() => working = true);
-      try {
-        final history = messages
-            .take(messages.length - 1)
-            .skip(messages.length > 7 ? messages.length - 7 : 0)
-            .map(
-              (message) => {
-                'role': message.fromUser ? 'user' : 'assistant',
-                'content': message.text,
-              },
-            )
-            .toList();
-        final reply = await aiChatService.reply(
-          message: text,
-          history: history,
-        );
-        if (mounted) addMessage(reply);
-      } on FunctionException catch (error) {
-        if (!mounted) return;
-        final details = error.details;
-        final message = details is Map && details['error'] is String
-            ? details['error'] as String
-            : 'No pude conectar con el asistente. Intenta nuevamente.';
-        addMessage(message);
-      } catch (_) {
-        if (mounted) {
-          addMessage('No pude conectar con el asistente. Intenta nuevamente.');
-        }
-      } finally {
-        if (mounted) setState(() => working = false);
+    setState(() => working = true);
+    try {
+      final profile = await TrainingProfileStore().load();
+      final activeWorkout = await WorkoutPlanStore().load();
+      final history = messages
+          .take(messages.length - 1)
+          .skip(messages.length > 7 ? messages.length - 7 : 0)
+          .map(
+            (message) => {
+              'role': message.fromUser ? 'user' : 'assistant',
+              'content': message.text,
+            },
+          )
+          .toList();
+      final reply = await aiChatService.reply(
+        message: text,
+        history: history,
+        trainingProfile: profile?.toJson(),
+        activeWorkout: activeWorkout?.toJson(),
+      );
+      if (mounted) addMessage(reply);
+    } on FunctionException catch (error) {
+      if (!mounted) return;
+      final details = error.details;
+      final message = details is Map && details['error'] is String
+          ? details['error'] as String
+          : 'No pude conectar con el asistente. Intenta nuevamente.';
+      addMessage(message);
+    } catch (_) {
+      if (mounted) {
+        addMessage('No pude conectar con el asistente. Intenta nuevamente.');
       }
+    } finally {
+      if (mounted) setState(() => working = false);
     }
   }
 
@@ -221,7 +168,7 @@ class _AiChatPageState extends State<AiChatPage> {
               quickAction(
                 'Editar evaluacion',
                 Icons.edit_outlined,
-                () => sendMessage('Editar mi evaluacion'),
+                reviewProfile,
               ),
               const SizedBox(width: 8),
               quickAction(

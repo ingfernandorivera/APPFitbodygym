@@ -47,6 +47,15 @@ function extractReply(payload: Record<string, unknown>): string | null {
   return parts.join("\n").trim() || null;
 }
 
+function safeContext(value: unknown, maxLength: number): string | null {
+  if (!value || typeof value !== "object") return null;
+  try {
+    return JSON.stringify(value).slice(0, maxLength);
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Metodo no permitido." }, 405);
@@ -75,6 +84,13 @@ Deno.serve(async (request) => {
   if (!message) return json({ error: "Escribe un mensaje." }, 400);
   if (message.length > 1200) return json({ error: "El mensaje es demasiado largo." }, 400);
 
+  const profile = safeContext(body.trainingProfile, 2000);
+  const activeWorkout = safeContext(body.activeWorkout, 6000);
+  const userContext = [
+    profile ? `Evaluacion actual del usuario: ${profile}` : "El usuario aun no tiene una evaluacion guardada.",
+    activeWorkout ? `Rutina activa actual: ${activeWorkout}` : "El usuario no tiene una rutina activa guardada.",
+  ].join("\n");
+
   const input = [
     ...validHistory(body.history),
     { role: "user", content: message },
@@ -88,7 +104,7 @@ Deno.serve(async (request) => {
     body: JSON.stringify({
       model: Deno.env.get("OPENAI_MODEL") || "gpt-5-mini",
       instructions:
-        "Eres el asistente de Fit Body Gym. Responde en espanol claro, breve y amable. Ayuda con ejercicio, uso de la app y habitos generales. No diagnostiques ni reemplaces a profesionales de salud. Ante dolor fuerte, sintomas preocupantes, lesiones o emergencias, recomienda detener el ejercicio y consultar a un profesional. No inventes datos del usuario ni afirmes haber cambiado rutinas o registros. Limita la respuesta a 180 palabras.",
+        `Eres el asistente de Fit Body Gym. Responde en espanol claro, breve y amable. Comprende literalmente la solicitud actual y usa el historial para mantener el contexto. Distingue una sesion solo para hoy de un plan semanal. Si el usuario pide una rutina, proponla con ejercicios, series, repeticiones y descansos adecuados a su solicitud y evaluacion. No digas que creaste, guardaste, modificaste o abriste algo: este chat solo puede proponer y explicar. Antes de reemplazar una rutina activa, muestra la propuesta y pide confirmacion. Si faltan datos indispensables, pregunta solo lo necesario. No diagnostiques ni reemplaces a profesionales de salud. Ante dolor fuerte, sintomas preocupantes, lesiones o emergencias, recomienda detener el ejercicio y consultar a un profesional. Limita la respuesta a 300 palabras.\n\n${userContext}`,
       input,
       max_output_tokens: 350,
       store: false,
