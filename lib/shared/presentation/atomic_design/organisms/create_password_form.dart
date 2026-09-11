@@ -19,6 +19,7 @@ class _CreatePasswordFormState extends State<CreatePasswordForm> {
   bool loading = false;
   bool showPassword = false;
   bool showConfirmation = false;
+  bool passwordUpdated = false;
   String? error;
 
   @override
@@ -48,6 +49,11 @@ class _CreatePasswordFormState extends State<CreatePasswordForm> {
           data: const {'password_created': true},
         ),
       );
+      if (mounted) {
+        password.clear();
+        confirmation.clear();
+        setState(() => passwordUpdated = true);
+      }
     } on AuthException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
@@ -57,6 +63,47 @@ class _CreatePasswordFormState extends State<CreatePasswordForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (passwordUpdated) {
+      return Column(
+        children: [
+          const AuthHeader(
+            icon: Icons.check_circle_outline,
+            iconSize: 70,
+            title: 'CONTRASEÑA ACTUALIZADA',
+            titleFontSize: 25,
+            subtitle:
+                'Tu contraseña se cambió correctamente. Ya puedes volver a la app e iniciar sesión.',
+            subtitleColor: Colors.white70,
+            iconTitleSpacing: 20,
+            titleSubtitleSpacing: 10,
+          ),
+          const SizedBox(height: 28),
+          SubmitButton(
+            label: 'VOLVER A LA APP',
+            loading: loading,
+            onPressed: () async {
+              setState(() {
+                loading = true;
+                error = null;
+              });
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } on AuthException catch (e) {
+                if (mounted) setState(() => error = e.message);
+              } finally {
+                if (mounted) setState(() => loading = false);
+              }
+            },
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: FormErrorText(error!),
+            ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         const AuthHeader(
