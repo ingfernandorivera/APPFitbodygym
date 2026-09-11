@@ -8,9 +8,14 @@ import '../../assessment/pages/training_profile_summary_page.dart';
 import '../../membership/models/membership_status.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.membership});
+  const HomePage({
+    super.key,
+    required this.membership,
+    required this.onOpenAiChat,
+  });
 
   final MembershipStatus membership;
+  final VoidCallback onOpenAiChat;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -43,7 +48,10 @@ class _HomePageState extends State<HomePage> {
       await Navigator.push<void>(
         context,
         MaterialPageRoute(
-          builder: (_) => TrainingProfileSummaryPage(profile: result),
+          builder: (_) => TrainingProfileSummaryPage(
+            profile: result,
+            onOpenAiChat: widget.onOpenAiChat,
+          ),
         ),
       );
     }
@@ -55,7 +63,10 @@ class _HomePageState extends State<HomePage> {
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) => TrainingProfileSummaryPage(profile: current),
+        builder: (_) => TrainingProfileSummaryPage(
+          profile: current,
+          onOpenAiChat: widget.onOpenAiChat,
+        ),
       ),
     );
   }

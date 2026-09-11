@@ -99,7 +99,10 @@ class _MembershipScreenState extends State<MembershipScreen> {
           },
           onSignOut: signOut,
           pages: [
-            HomePage(membership: membership),
+            HomePage(
+              membership: membership,
+              onOpenAiChat: () => setState(() => selectedIndex = 2),
+            ),
             membership.active
                 ? TrainingPage(key: ValueKey(trainingRevision))
                 : const LockedFeaturePage(

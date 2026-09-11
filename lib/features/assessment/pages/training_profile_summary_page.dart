@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../training/data/demo_workout_generator.dart';
-import '../../training/pages/workout_result_page.dart';
 import '../models/training_profile.dart';
 
 class TrainingProfileSummaryPage extends StatelessWidget {
-  const TrainingProfileSummaryPage({super.key, required this.profile});
+  const TrainingProfileSummaryPage({
+    super.key,
+    required this.profile,
+    required this.onOpenAiChat,
+  });
 
   final TrainingProfile profile;
+  final VoidCallback onOpenAiChat;
 
   @override
   Widget build(BuildContext context) {
@@ -88,18 +91,13 @@ class TrainingProfileSummaryPage extends StatelessWidget {
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: () {
-              final plan = DemoWorkoutGenerator().generate(profile);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => WorkoutResultPage(plan: plan),
-                ),
-              );
+              Navigator.pop(context);
+              onOpenAiChat();
             },
-            icon: const Icon(Icons.auto_awesome),
+            icon: const Icon(Icons.chat_bubble_outline),
             label: const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text('Preparar mi rutina'),
+              child: Text('Continuar en el Chat IA'),
             ),
           ),
           const SizedBox(height: 8),
