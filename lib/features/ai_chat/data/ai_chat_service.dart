@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AiChatService {
@@ -12,11 +14,30 @@ class AiChatService {
     Map<String, dynamic>? trainingProfile,
     Map<String, dynamic>? activeWorkout,
   }) async {
+    final contextualHistory = <Map<String, String>>[
+      ...history,
+      if (trainingProfile != null)
+        {
+          'role': 'user',
+          'content':
+              'Contexto de mi perfil de entrenamiento ya completado: '
+              '${jsonEncode(trainingProfile)}. Usa estos datos y no vuelvas a '
+              'preguntarme información que ya aparece aquí.',
+        },
+      if (activeWorkout != null)
+        {
+          'role': 'user',
+          'content':
+              'Contexto de mi rutina activa actual: '
+              '${jsonEncode(activeWorkout)}. No la reemplaces ni afirmes haber '
+              'guardado cambios sin pedirme confirmación.',
+        },
+    ];
     final response = await _client.functions.invoke(
       'ai-chat',
       body: {
         'message': message,
-        'history': history,
+        'history': contextualHistory,
         'trainingProfile': trainingProfile,
         'activeWorkout': activeWorkout,
       },
