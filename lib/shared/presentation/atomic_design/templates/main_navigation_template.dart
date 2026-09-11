@@ -33,10 +33,7 @@ class MainNavigationTemplate extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.only(bottom: 88),
-        child: IndexedStack(index: selectedIndex, children: pages),
-      ),
+      body: IndexedStack(index: selectedIndex, children: pages),
       bottomNavigationBar: MainNavigationBar(
         destinations: destinations,
         selectedIndex: selectedIndex,

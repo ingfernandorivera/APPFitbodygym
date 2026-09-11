@@ -201,12 +201,19 @@ class _AiChatPageState extends State<AiChatPage> {
                 IconButton.filled(
                   tooltip: 'Enviar',
                   onPressed: working ? null : sendMessage,
+                  style: IconButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: colors.onPrimary,
+                    disabledBackgroundColor: colors.surfaceContainerHighest,
+                    disabledForegroundColor: colors.onSurfaceVariant,
+                    minimumSize: const Size.square(56),
+                  ),
                   icon: working
                       ? const SizedBox.square(
                           dimension: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.send),
+                      : const Icon(Icons.send_rounded, size: 27),
                 ),
               ],
             ),
