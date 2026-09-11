@@ -104,9 +104,11 @@ Deno.serve(async (request) => {
     body: JSON.stringify({
       model: Deno.env.get("OPENAI_MODEL") || "gpt-5-mini",
       instructions:
-        `Eres el asistente de Fit Body Gym. Responde en espanol claro, breve y amable. Comprende literalmente la solicitud actual y usa el historial para mantener el contexto. Distingue una sesion solo para hoy de un plan semanal. Si el usuario pide una rutina, proponla con ejercicios, series, repeticiones y descansos adecuados a su solicitud y evaluacion. No digas que creaste, guardaste, modificaste o abriste algo: este chat solo puede proponer y explicar. Antes de reemplazar una rutina activa, muestra la propuesta y pide confirmacion. Si faltan datos indispensables, pregunta solo lo necesario. No diagnostiques ni reemplaces a profesionales de salud. Ante dolor fuerte, sintomas preocupantes, lesiones o emergencias, recomienda detener el ejercicio y consultar a un profesional. Limita la respuesta a 300 palabras.\n\n${userContext}`,
+        `Eres el asistente de Fit Body Gym. Responde en espanol claro, breve y amable. Comprende literalmente la solicitud actual y usa el historial para mantener el contexto. Distingue una sesion solo para hoy de un plan semanal. Si el usuario pide una rutina, proponla completa, con ejercicios, series, repeticiones y descansos adecuados a su solicitud y evaluacion. No dejes frases, listas ni rutinas a medias. No digas que creaste, guardaste, modificaste o abriste algo: este chat solo puede proponer y explicar. Antes de reemplazar una rutina activa, muestra la propuesta y pide confirmacion. Si faltan datos indispensables, pregunta solo lo necesario. No diagnostiques ni reemplaces a profesionales de salud. Ante dolor fuerte, sintomas preocupantes, lesiones o emergencias, recomienda detener el ejercicio y consultar a un profesional. Limita la respuesta a 500 palabras.\n\n${userContext}`,
       input,
-      max_output_tokens: 350,
+      reasoning: { effort: "low" },
+      text: { verbosity: "low" },
+      max_output_tokens: 1600,
       store: false,
     }),
   });

@@ -34,13 +34,34 @@ class AiChatService {
               'guardado cambios sin pedirme confirmación.',
         },
     ];
-    final body = {
-      'message': message,
-      'history': contextualHistory,
-      'trainingProfile': trainingProfile,
-      'activeWorkout': activeWorkout,
-    };
+    var requestMessage = message;
+    var requestHistory = contextualHistory;
+    var completeReply = '';
 
+    for (var part = 0; part < 3; part++) {
+      final reply = await _invokeWithEmptyReplyRetry({
+        'message': requestMessage,
+        'history': requestHistory,
+        'trainingProfile': trainingProfile,
+        'activeWorkout': activeWorkout,
+      });
+      completeReply = completeReply.isEmpty
+          ? reply
+          : '$completeReply\n${reply.trimLeft()}';
+      if (!_looksTruncated(reply)) return completeReply;
+
+      requestHistory = [
+        ...contextualHistory,
+        {'role': 'assistant', 'content': completeReply},
+      ];
+      requestMessage =
+          'Continua exactamente desde donde se corto la respuesta anterior. '
+          'No repitas contenido y termina la lista o explicacion completa.';
+    }
+    return completeReply;
+  }
+
+  Future<String> _invokeWithEmptyReplyRetry(Map<String, dynamic> body) async {
     dynamic response;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
@@ -51,13 +72,18 @@ class AiChatService {
         rethrow;
       }
     }
-
     final data = response.data;
     if (data is Map && data['reply'] is String) {
       final reply = (data['reply'] as String).trim();
       if (reply.isNotEmpty) return reply;
     }
     throw const FormatException('La respuesta del asistente no es valida.');
+  }
+
+  bool _looksTruncated(String reply) {
+    final text = reply.trimRight();
+    if (text.length < 500) return false;
+    return !RegExp(r'[.!?;:)]$').hasMatch(text);
   }
 
   bool _isEmptyReplyError(dynamic details) =>
