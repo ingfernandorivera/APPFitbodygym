@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../assessment/data/training_profile_store.dart';
 import '../../assessment/models/training_profile.dart';
 import '../../assessment/pages/training_assessment_page.dart';
 import '../../training/data/demo_workout_generator.dart';
 import '../../training/data/workout_plan_store.dart';
+import '../data/ai_chat_service.dart';
 
 class AiChatPage extends StatefulWidget {
   const AiChatPage({super.key, required this.onOpenTraining});
@@ -23,6 +25,7 @@ class _ChatMessage {
 }
 
 class _AiChatPageState extends State<AiChatPage> {
+  final aiChatService = AiChatService();
   final controller = TextEditingController();
   final scrollController = ScrollController();
   final messages = <_ChatMessage>[
@@ -127,9 +130,37 @@ class _AiChatPageState extends State<AiChatPage> {
       addMessage('Abriendo tu rutina activa en Entrenar.');
       widget.onOpenTraining();
     } else {
-      addMessage(
-        'Por ahora puedo crear una rutina, actualizar tu evaluacion o abrir Entrenar. Puedes elegir una opcion de abajo.',
-      );
+      setState(() => working = true);
+      try {
+        final history = messages
+            .take(messages.length - 1)
+            .skip(messages.length > 7 ? messages.length - 7 : 0)
+            .map(
+              (message) => {
+                'role': message.fromUser ? 'user' : 'assistant',
+                'content': message.text,
+              },
+            )
+            .toList();
+        final reply = await aiChatService.reply(
+          message: text,
+          history: history,
+        );
+        if (mounted) addMessage(reply);
+      } on FunctionException catch (error) {
+        if (!mounted) return;
+        final details = error.details;
+        final message = details is Map && details['error'] is String
+            ? details['error'] as String
+            : 'No pude conectar con el asistente. Intenta nuevamente.';
+        addMessage(message);
+      } catch (_) {
+        if (mounted) {
+          addMessage('No pude conectar con el asistente. Intenta nuevamente.');
+        }
+      } finally {
+        if (mounted) setState(() => working = false);
+      }
     }
   }
 
