@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../data/exercise_catalog_repository.dart';
 import '../data/workout_history_store.dart';
 import '../models/workout_plan.dart';
 import '../models/workout_session.dart';
+import '../widgets/exercise_video_player.dart';
 
 class WorkoutSessionPage extends StatefulWidget {
   const WorkoutSessionPage({
@@ -19,13 +21,33 @@ class WorkoutSessionPage extends StatefulWidget {
 }
 
 class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
-  late final List<_ExerciseInput> inputs;
+  late List<_ExerciseInput> inputs;
   bool saving = false;
 
   @override
   void initState() {
     super.initState();
     inputs = widget.day.exercises.map(_ExerciseInput.new).toList();
+    _enrichExercises();
+  }
+
+  Future<void> _enrichExercises() async {
+    final tempPlan = WorkoutPlan(
+      name: widget.planName,
+      goal: '',
+      createdAt: DateTime.now(),
+      days: [widget.day],
+    );
+    final enrichedPlan = await const ExerciseCatalogRepository().enrichWorkoutPlan(tempPlan);
+    if (mounted && enrichedPlan.days.isNotEmpty) {
+      setState(() {
+        for (var i = 0; i < inputs.length; i++) {
+          if (i < enrichedPlan.days.first.exercises.length) {
+            inputs[i].exercise = enrichedPlan.days.first.exercises[i];
+          }
+        }
+      });
+    }
   }
 
   @override
@@ -74,6 +96,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           const SizedBox(height: 16),
           ...List.generate(inputs.length, (index) {
             final input = inputs[index];
+            final ex = input.exercise;
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
@@ -81,17 +104,41 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      value: input.completed,
-                      title: Text(input.exercise.name),
-                      subtitle: Text(
-                        '${input.exercise.sets} series · ${input.exercise.repetitions} reps',
-                      ),
-                      onChanged: (value) =>
-                          setState(() => input.completed = value ?? false),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            value: input.completed,
+                            title: Text(
+                              ex.name,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              '${ex.sets} series · ${ex.repetitions} reps · ${ex.restSeconds}s descanso',
+                            ),
+                            onChanged: (value) =>
+                                setState(() => input.completed = value ?? false),
+                          ),
+                        ),
+                        if (ex.mediaUrl != null && ex.mediaUrl!.isNotEmpty)
+                          IconButton(
+                            tooltip: 'Ver técnica en video',
+                            icon: const Icon(Icons.play_circle_fill, color: Colors.amber, size: 32),
+                            onPressed: () {
+                              ExerciseVideoPlayer.showVideoModal(
+                                context,
+                                title: ex.name,
+                                videoUrl: ex.mediaUrl!,
+                                instructions: ex.instructions,
+                              );
+                            },
+                          ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
@@ -166,7 +213,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 class _ExerciseInput {
   _ExerciseInput(this.exercise);
 
-  final WorkoutExercise exercise;
+  WorkoutExercise exercise;
   final weightController = TextEditingController();
   final repetitionsController = TextEditingController();
   bool completed = false;
@@ -186,3 +233,4 @@ class _ExerciseInput {
     repetitionsController.dispose();
   }
 }
+

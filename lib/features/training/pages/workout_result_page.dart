@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/exercise_catalog_repository.dart';
 import '../data/workout_plan_store.dart';
 import '../models/workout_plan.dart';
+import '../widgets/exercise_video_player.dart';
 
 class WorkoutResultPage extends StatefulWidget {
   const WorkoutResultPage({super.key, required this.plan});
@@ -12,12 +14,29 @@ class WorkoutResultPage extends StatefulWidget {
 }
 
 class _WorkoutResultPageState extends State<WorkoutResultPage> {
+  late WorkoutPlan plan;
   bool saving = false;
   bool saved = false;
 
+  @override
+  void initState() {
+    super.initState();
+    plan = widget.plan;
+    _enrichPlan();
+  }
+
+  Future<void> _enrichPlan() async {
+    final enriched = await const ExerciseCatalogRepository().enrichWorkoutPlan(widget.plan);
+    if (mounted) {
+      setState(() {
+        plan = enriched;
+      });
+    }
+  }
+
   Future<void> savePlan() async {
     setState(() => saving = true);
-    await WorkoutPlanStore().save(widget.plan);
+    await WorkoutPlanStore().save(plan);
     if (!mounted) return;
     setState(() {
       saving = false;
@@ -36,12 +55,12 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            widget.plan.name,
+            plan.name,
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 6),
-          Text('Objetivo: ${widget.plan.goal}'),
-          if (widget.plan.isDemo) ...[
+          Text('Objetivo: ${plan.goal}'),
+          if (plan.isDemo) ...[
             const SizedBox(height: 12),
             const Card(
               child: Padding(
@@ -53,7 +72,7 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
             ),
           ],
           const SizedBox(height: 12),
-          ...widget.plan.days.map(
+          ...plan.days.map(
             (day) => Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ExpansionTile(
@@ -71,10 +90,23 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
                           '${exercise.muscleGroup} · ${exercise.sets} series · ${exercise.repetitions} reps · ${exercise.restSeconds}s descanso\n${exercise.instructions}',
                         ),
                         isThreeLine: true,
-                        trailing: const Icon(
-                          Icons.image_outlined,
-                          semanticLabel: 'Multimedia pendiente',
-                        ),
+                        trailing: exercise.mediaUrl != null && exercise.mediaUrl!.isNotEmpty
+                            ? IconButton(
+                                tooltip: 'Ver video de la técnica',
+                                icon: const Icon(Icons.play_circle_fill, color: Colors.amber, size: 30),
+                                onPressed: () {
+                                  ExerciseVideoPlayer.showVideoModal(
+                                    context,
+                                    title: exercise.name,
+                                    videoUrl: exercise.mediaUrl!,
+                                    instructions: exercise.instructions,
+                                  );
+                                },
+                              )
+                            : const Icon(
+                                Icons.videocam_off_outlined,
+                                color: Colors.grey,
+                              ),
                       ),
                     )
                     .toList(),
@@ -103,3 +135,4 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
     );
   }
 }
+
