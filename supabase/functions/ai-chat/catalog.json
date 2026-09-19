@@ -1,0 +1,547 @@
+[
+  {
+    "id": "chest_press_machine",
+    "name": "Press de pecho en máquina",
+    "muscleGroup": "Pecho y tríceps",
+    "sets": 3,
+    "repetitions": "10-12",
+    "restSeconds": 75,
+    "instructions": "Ajusta el asiento, apoya la espalda y empuja sin bloquear los codos.",
+    "commonMistakes": "Separar la espalda del respaldo o bajar los codos en exceso.",
+    "alternative": "Press con mancuernas en banco plano.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "chest_press_machine",
+    "movementPattern": "horizontal_push",
+    "equipment": "machine",
+    "primaryMuscles": [
+      "Pecho"
+    ],
+    "secondaryMuscles": [
+      "Tríceps"
+    ],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "dumbbell_press"
+    ],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "lat_pulldown",
+    "name": "Jalón al pecho",
+    "muscleGroup": "Espalda y bíceps",
+    "sets": 3,
+    "repetitions": "10-12",
+    "restSeconds": 75,
+    "instructions": "Lleva la barra a la parte alta del pecho con el torso estable.",
+    "commonMistakes": "Balancear el cuerpo o tirar detrás de la nuca.",
+    "alternative": "Remo sentado con agarre neutro.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "lat_pulldown",
+    "movementPattern": "vertical_pull",
+    "equipment": "machine",
+    "primaryMuscles": [
+      "Espalda"
+    ],
+    "secondaryMuscles": [
+      "Bíceps"
+    ],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "dumbbell_row"
+    ],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "seated_row",
+    "name": "Remo sentado",
+    "muscleGroup": "Espalda",
+    "sets": 3,
+    "repetitions": "12",
+    "restSeconds": 60,
+    "instructions": "Lleva el agarre al abdomen y junta los omóplatos sin encorvarte.",
+    "commonMistakes": "Usar impulso o elevar los hombros.",
+    "alternative": "Remo con mancuerna apoyado.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "seated_row",
+    "movementPattern": "horizontal_pull",
+    "equipment": "machine",
+    "primaryMuscles": [
+      "Espalda"
+    ],
+    "secondaryMuscles": [
+      "Bíceps"
+    ],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "dumbbell_row"
+    ],
+    "targetMin": 12,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "leg_press",
+    "name": "Prensa de piernas",
+    "muscleGroup": "Cuádriceps y glúteos",
+    "sets": 4,
+    "repetitions": "10-12",
+    "restSeconds": 90,
+    "instructions": "Apoya toda la planta del pie y baja solo mientras la pelvis siga estable.",
+    "commonMistakes": "Bloquear las rodillas o despegar la cadera.",
+    "alternative": "Sentadilla goblet.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "leg_press",
+    "movementPattern": "squat",
+    "equipment": "machine",
+    "primaryMuscles": [
+      "Piernas",
+      "Cuádriceps"
+    ],
+    "secondaryMuscles": [
+      "Glúteos"
+    ],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "goblet_squat"
+    ],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "leg_curl",
+    "name": "Curl femoral",
+    "muscleGroup": "Isquiotibiales",
+    "sets": 3,
+    "repetitions": "12-15",
+    "restSeconds": 60,
+    "instructions": "Flexiona las rodillas lentamente y mantén la cadera apoyada.",
+    "commonMistakes": "Levantar la cadera o soltar el peso de golpe.",
+    "alternative": "Peso muerto rumano con mancuernas ligeras.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "leg_curl",
+    "movementPattern": "knee_flexion",
+    "equipment": "machine",
+    "primaryMuscles": [
+      "Isquiotibiales"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "dumbbell_rdl"
+    ],
+    "targetMin": 12,
+    "targetMax": 15,
+    "targetRir": 2
+  },
+  {
+    "id": "calf_raise",
+    "name": "Elevación de pantorrillas",
+    "muscleGroup": "Pantorrillas",
+    "sets": 3,
+    "repetitions": "15-20",
+    "restSeconds": 45,
+    "instructions": "Completa el recorrido y mantén una pausa breve arriba.",
+    "commonMistakes": "Rebotar o hacer un recorrido corto.",
+    "alternative": "Elevación de pantorrillas de pie.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "calf_raise",
+    "movementPattern": "ankle",
+    "equipment": "bodyweight",
+    "primaryMuscles": [
+      "Pantorrillas"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "glute_bridge"
+    ],
+    "targetMin": 15,
+    "targetMax": 20,
+    "targetRir": 2
+  },
+  {
+    "id": "goblet_squat",
+    "name": "Sentadilla goblet",
+    "muscleGroup": "Piernas y glúteos",
+    "sets": 3,
+    "repetitions": "10",
+    "restSeconds": 75,
+    "instructions": "Sostén el peso junto al pecho y mantén rodillas y pies alineados.",
+    "commonMistakes": "Colapsar las rodillas hacia dentro o redondear la espalda.",
+    "alternative": "Prensa de piernas.",
+    "difficulty": "Intermedio",
+    "mediaUrl": null,
+    "catalogId": "goblet_squat",
+    "movementPattern": "squat",
+    "equipment": "dumbbell",
+    "primaryMuscles": [
+      "Piernas",
+      "Cuádriceps"
+    ],
+    "secondaryMuscles": [
+      "Glúteos"
+    ],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "glute_bridge"
+    ],
+    "targetMin": 10,
+    "targetMax": 10,
+    "targetRir": 2
+  },
+  {
+    "id": "shoulder_press_machine",
+    "name": "Press de hombros en máquina",
+    "muscleGroup": "Hombros y tríceps",
+    "sets": 3,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Mantén la espalda apoyada y controla todo el recorrido.",
+    "commonMistakes": "Arquear la zona lumbar o bajar demasiado los codos.",
+    "alternative": "Press de hombros con mancuernas ligeras.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "shoulder_press_machine",
+    "movementPattern": "vertical_push",
+    "equipment": "machine",
+    "primaryMuscles": [
+      "Hombros"
+    ],
+    "secondaryMuscles": [
+      "Tríceps"
+    ],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "dumbbell_press"
+    ],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "treadmill_walk",
+    "name": "Caminata en banda",
+    "muscleGroup": "Cardiovascular",
+    "sets": 1,
+    "repetitions": "12 minutos",
+    "restSeconds": 0,
+    "instructions": "Usa un ritmo sostenible y conserva una postura erguida.",
+    "commonMistakes": "Sujetarse con fuerza o aumentar la velocidad sin control.",
+    "alternative": "Bicicleta estacionaria.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "treadmill_walk",
+    "movementPattern": "cardio",
+    "equipment": "treadmill",
+    "primaryMuscles": [
+      "Cardiovascular"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "cardio",
+    "mediaStatus": "missing",
+    "alternativeIds": [
+      "march_in_place"
+    ],
+    "targetMin": 12,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "dumbbell_press",
+    "name": "Press con mancuernas en el suelo",
+    "muscleGroup": "Pecho",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Apoya la espalda y empuja con control.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "dumbbell_press",
+    "movementPattern": "horizontal_push",
+    "equipment": "dumbbell",
+    "primaryMuscles": [
+      "Pecho"
+    ],
+    "secondaryMuscles": [],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "dumbbell_row",
+    "name": "Remo con mancuerna apoyado",
+    "muscleGroup": "Espalda",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Apoya una mano en una superficie estable y acerca el peso al costado.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "dumbbell_row",
+    "movementPattern": "horizontal_pull",
+    "equipment": "dumbbell",
+    "primaryMuscles": [
+      "Espalda"
+    ],
+    "secondaryMuscles": [],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "dumbbell_rdl",
+    "name": "Peso muerto rumano con mancuernas",
+    "muscleGroup": "Isquiotibiales",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Desplaza la cadera atrás con espalda estable y recorrido cómodo.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "dumbbell_rdl",
+    "movementPattern": "hinge",
+    "equipment": "dumbbell",
+    "primaryMuscles": [
+      "Isquiotibiales"
+    ],
+    "secondaryMuscles": [],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "glute_bridge",
+    "name": "Puente de glúteos",
+    "muscleGroup": "Glúteos",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Eleva la cadera sin arquear la espalda.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "glute_bridge",
+    "movementPattern": "hip_extension",
+    "equipment": "bodyweight",
+    "primaryMuscles": [
+      "Glúteos"
+    ],
+    "secondaryMuscles": [],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "wall_pushup",
+    "name": "Flexiones en pared",
+    "muscleGroup": "Pecho",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Apoya las manos en la pared y flexiona los codos con control.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "wall_pushup",
+    "movementPattern": "horizontal_push",
+    "equipment": "bodyweight",
+    "primaryMuscles": [
+      "Pecho"
+    ],
+    "secondaryMuscles": [],
+    "compound": true,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "bird_dog",
+    "name": "Extensión alterna en cuadrupedia",
+    "muscleGroup": "Abdomen",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Extiende brazo y pierna opuestos manteniendo el tronco estable.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "bird_dog",
+    "movementPattern": "core",
+    "equipment": "bodyweight",
+    "primaryMuscles": [
+      "Abdomen"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "dead_bug",
+    "name": "Extensión alterna tumbado",
+    "muscleGroup": "Abdomen",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Baja brazo y pierna opuestos sin despegar la zona lumbar.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "dead_bug",
+    "movementPattern": "core",
+    "equipment": "bodyweight",
+    "primaryMuscles": [
+      "Abdomen"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "dumbbell_curl",
+    "name": "Curl con mancuernas",
+    "muscleGroup": "Bíceps",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Flexiona los codos sin balancear el tronco.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "dumbbell_curl",
+    "movementPattern": "elbow_flexion",
+    "equipment": "dumbbell",
+    "primaryMuscles": [
+      "Bíceps"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "lateral_raise",
+    "name": "Elevación lateral con mancuernas",
+    "muscleGroup": "Hombros",
+    "sets": 2,
+    "repetitions": "10-12",
+    "restSeconds": 60,
+    "instructions": "Eleva los brazos suavemente sin encoger los hombros.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "lateral_raise",
+    "movementPattern": "shoulder_abduction",
+    "equipment": "dumbbell",
+    "primaryMuscles": [
+      "Hombros"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "strength",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 10,
+    "targetMax": 12,
+    "targetRir": 2
+  },
+  {
+    "id": "march_in_place",
+    "name": "Marcha suave en el sitio",
+    "muscleGroup": "Cardiovascular",
+    "sets": 1,
+    "repetitions": "5 minutos",
+    "restSeconds": 0,
+    "instructions": "Marcha a ritmo cómodo en una superficie estable.",
+    "commonMistakes": "Evita el impulso y detente si aparece dolor.",
+    "alternative": "Consulta las alternativas del catálogo según tu equipo.",
+    "difficulty": "Principiante",
+    "mediaUrl": null,
+    "catalogId": "march_in_place",
+    "movementPattern": "cardio",
+    "equipment": "bodyweight",
+    "primaryMuscles": [
+      "Cardiovascular"
+    ],
+    "secondaryMuscles": [],
+    "compound": false,
+    "type": "cardio",
+    "mediaStatus": "missing",
+    "alternativeIds": [],
+    "targetMin": 5,
+    "targetMax": 5,
+    "targetRir": 2
+  }
+]

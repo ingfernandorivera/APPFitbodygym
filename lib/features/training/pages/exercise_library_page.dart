@@ -5,7 +5,11 @@ import '../models/workout_plan.dart';
 import '../widgets/exercise_video_player.dart';
 
 class ExerciseLibraryPage extends StatefulWidget {
-  const ExerciseLibraryPage({super.key});
+  const ExerciseLibraryPage({
+    super.key,
+    this.repository = const ExerciseCatalogRepository(),
+  });
+  final ExerciseCatalogRepository repository;
 
   @override
   State<ExerciseLibraryPage> createState() => _ExerciseLibraryPageState();
@@ -13,26 +17,26 @@ class ExerciseLibraryPage extends StatefulWidget {
 
 class _ExerciseLibraryPageState extends State<ExerciseLibraryPage> {
   String query = '';
-  late final Future<List<WorkoutExercise>> exercisesFuture;
+  late Future<CatalogResult> exercisesFuture;
 
   @override
   void initState() {
     super.initState();
-    exercisesFuture = const ExerciseCatalogRepository().load();
+    exercisesFuture = widget.repository.loadResult();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Biblioteca de ejercicios')),
-      body: FutureBuilder<List<WorkoutExercise>>(
+      body: FutureBuilder<CatalogResult>(
         future: exercisesFuture,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
           final normalized = query.trim().toLowerCase();
-          final exercises = snapshot.data!.where((exercise) {
+          final exercises = snapshot.data!.exercises.where((exercise) {
             return normalized.isEmpty ||
                 exercise.name.toLowerCase().contains(normalized) ||
                 exercise.muscleGroup.toLowerCase().contains(normalized);
@@ -41,6 +45,16 @@ class _ExerciseLibraryPageState extends State<ExerciseLibraryPage> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              if (snapshot.data!.source != CatalogSource.remote)
+                ListTile(
+                  title: Text(snapshot.data!.message ?? 'Catálogo local'),
+                  trailing: TextButton(
+                    onPressed: () => setState(
+                      () => exercisesFuture = widget.repository.loadResult(),
+                    ),
+                    child: const Text('Reintentar'),
+                  ),
+                ),
               SearchBar(
                 hintText: 'Buscar ejercicio o músculo',
                 leading: const Icon(Icons.search),
@@ -79,8 +93,8 @@ class _ExerciseCard extends StatelessWidget {
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (exercise.mediaUrl case final url?) ...[
-            ExerciseVideoPlayer(url: url),
+          if (exercise.mediaStatus == 'video' && exercise.mediaUrl != null) ...[
+            ExerciseVideoPlayer(url: exercise.mediaUrl!),
             const SizedBox(height: 12),
           ],
           Text(

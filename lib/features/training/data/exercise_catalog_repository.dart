@@ -1,122 +1,132 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/config/supabase_config.dart';
 import '../models/workout_plan.dart';
 import 'exercise_catalog.dart';
 
+enum CatalogSource { remote, fallback, error }
+
+class CatalogResult {
+  const CatalogResult(this.exercises, this.source, {this.message});
+  final List<WorkoutExercise> exercises;
+  final CatalogSource source;
+  final String? message;
+}
+
 class ExerciseCatalogRepository {
-  const ExerciseCatalogRepository();
-
-  Future<List<WorkoutExercise>> load() async {
-    if (!SupabaseConfig.isConfigured) return ExerciseCatalog.exercises;
-
+  const ExerciseCatalogRepository({this.fetchRows});
+  final Future<List<Map<String, dynamic>>> Function()? fetchRows;
+  Future<List<WorkoutExercise>> load() async => (await loadResult()).exercises;
+  Future<CatalogResult> loadResult() async {
+    if (fetchRows == null && !SupabaseConfig.isConfigured) {
+      return const CatalogResult(
+        ExerciseCatalog.exercises,
+        CatalogSource.fallback,
+        message:
+            'Catálogo local disponible. El catálogo remoto no está configurado.',
+      );
+    }
     try {
-      final rows = await Supabase.instance.client
-          .from('exercise_catalog')
-          .select('id,name,muscle_group,instructions,media_url')
-          .eq('is_active', true)
-          .order('name');
-      final remote = (rows as List<dynamic>)
-          .map((row) => _fromRow(row as Map<String, dynamic>))
-          .toList();
-      return remote.isEmpty ? ExerciseCatalog.exercises : remote;
+      // select(*) también funciona antes de aplicar la migración de metadatos.
+      final rows = fetchRows != null
+          ? await fetchRows!()
+          : await Supabase.instance.client
+                .from('exercise_catalog')
+                .select()
+                .eq('is_active', true)
+                .order('name');
+      final remote = rows.map((row) => fromRow(row)).toList();
+      if (remote.isEmpty) {
+        return const CatalogResult(
+          ExerciseCatalog.exercises,
+          CatalogSource.fallback,
+          message: 'El catálogo remoto está vacío. Usamos el catálogo local.',
+        );
+      }
+      final merged = {for (final e in ExerciseCatalog.exercises) e.stableId: e};
+      for (final e in remote) {
+        merged[e.stableId] = e;
+      }
+      return CatalogResult(merged.values.toList(), CatalogSource.remote);
     } catch (_) {
-      return ExerciseCatalog.exercises;
+      return const CatalogResult(
+        ExerciseCatalog.exercises,
+        CatalogSource.error,
+        message:
+            'No se pudo cargar el catálogo remoto. Usamos el catálogo local; puedes reintentar.',
+      );
     }
   }
 
-  /// Vincula automáticamente las URLs de videos y detalles del catálogo a los ejercicios de una rutina.
-  Future<WorkoutPlan> enrichWorkoutPlan(WorkoutPlan plan) async {
-    final catalog = await load();
-    if (catalog.isEmpty) return plan;
-
-    final catalogMapById = {for (final e in catalog) e.id.toLowerCase(): e};
-    final catalogMapByName = {
-      for (final e in catalog) _normalizeName(e.name): e,
-    };
-
-    final enrichedDays = plan.days.map((day) {
-      final enrichedExercises = day.exercises.map((exercise) {
-        if (exercise.mediaUrl != null && exercise.mediaUrl!.isNotEmpty) {
-          return exercise;
-        }
-
-        final normalizedExName = _normalizeName(exercise.name);
-        var match =
-            catalogMapById[exercise.id.toLowerCase()] ??
-            catalogMapByName[normalizedExName];
-
-        if (match == null) {
-          for (final catExercise in catalog) {
-            final catNorm = _normalizeName(catExercise.name);
-            if (catNorm.contains(normalizedExName) ||
-                normalizedExName.contains(catNorm)) {
-              match = catExercise;
-              break;
-            }
-          }
-        }
-
-        if (match != null) {
-          return WorkoutExercise(
-            id: exercise.id,
-            name: exercise.name,
-            muscleGroup: exercise.muscleGroup.isNotEmpty
-                ? exercise.muscleGroup
-                : match.muscleGroup,
-            sets: exercise.sets,
-            repetitions: exercise.repetitions,
-            restSeconds: exercise.restSeconds,
-            instructions:
-                exercise.instructions.isNotEmpty &&
-                    exercise.instructions != 'Sigue la demostración del video.'
-                ? exercise.instructions
-                : match.instructions,
-            commonMistakes: exercise.commonMistakes.isNotEmpty
-                ? exercise.commonMistakes
-                : match.commonMistakes,
-            alternative: exercise.alternative.isNotEmpty
-                ? exercise.alternative
-                : match.alternative,
-            difficulty: exercise.difficulty,
-            mediaUrl: match.mediaUrl,
-          );
-        }
-        return exercise;
-      }).toList();
-
-      return WorkoutDay(
-        dayNumber: day.dayNumber,
-        title: day.title,
-        focus: day.focus,
-        exercises: enrichedExercises,
-      );
-    }).toList();
-
-    return WorkoutPlan(
-      name: plan.name,
-      goal: plan.goal,
-      createdAt: plan.createdAt,
-      days: enrichedDays,
-      isDemo: plan.isDemo,
-    );
+  static String normalize(String name) =>
+      name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9áéíóúñ]'), '');
+  static WorkoutExercise fromRow(Map<String, dynamic> row) {
+    final name = row['name'] as String;
+    final local = ExerciseCatalog.exercises
+        .where(
+          (e) => e.id == row['slug'] || normalize(e.name) == normalize(name),
+        )
+        .firstOrNull;
+    final metadata = row['metadata'] is Map
+        ? Map<String, dynamic>.from(row['metadata'] as Map)
+        : <String, dynamic>{};
+    final media = row['media_url'] as String?;
+    return WorkoutExercise.fromJson({
+      if (local != null) ...local.toJson(),
+      'id': local?.id ?? row['slug'] ?? row['id'],
+      'catalogId': local?.stableId ?? row['slug'] ?? row['id'],
+      'name': name,
+      'muscleGroup': row['muscle_group'] ?? 'General',
+      'equipment': local?.equipment ?? row['equipment'],
+      'sets': local?.sets ?? 3,
+      'repetitions': local?.repetitions ?? '10-12',
+      'restSeconds': local?.restSeconds ?? 60,
+      'instructions': row['instructions'] ?? '',
+      'mediaUrl': media,
+      'mediaStatus': media == null || media.isEmpty
+          ? 'missing'
+          : row['media_type'] == 'video'
+          ? 'video'
+          : 'image',
+      'movementPattern': metadata['movementPattern'] ?? local?.movementPattern,
+      'primaryMuscles':
+          metadata['primaryMuscles'] ?? local?.primaryMuscles ?? <String>[],
+      'secondaryMuscles':
+          metadata['secondaryMuscles'] ?? local?.secondaryMuscles ?? <String>[],
+      'alternativeIds':
+          metadata['alternativeIds'] ?? local?.alternativeIds ?? <String>[],
+      'difficulty': metadata['difficulty'] ?? local?.difficulty ?? 'Intermedio',
+      'compound': metadata['compound'] ?? local?.compound ?? false,
+      'type': metadata['type'] ?? local?.type ?? 'strength',
+    });
   }
 
-  static String _normalizeName(String name) =>
-      name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9áéíóúñ]'), '');
-
-  WorkoutExercise _fromRow(Map<String, dynamic> row) => WorkoutExercise(
-    id: row['id'] as String,
-    name: row['name'] as String,
-    muscleGroup: row['muscle_group'] as String? ?? 'General',
-    sets: 3,
-    repetitions: '10-12',
-    restSeconds: 60,
-    instructions:
-        row['instructions'] as String? ?? 'Sigue la demostración del video.',
-    commonMistakes: 'Evita usar impulso y mantén el movimiento controlado.',
-    alternative: 'Consulta una alternativa con tu entrenador.',
-    difficulty: 'Intermedio',
-    mediaUrl: row['media_url'] as String?,
-  );
+  Future<WorkoutPlan> enrichWorkoutPlan(WorkoutPlan plan) async {
+    final catalog = await load();
+    return plan.copyWith(
+      days: plan.days
+          .map(
+            (d) => WorkoutDay(
+              dayNumber: d.dayNumber,
+              title: d.title,
+              focus: d.focus,
+              exercises: d.exercises.map((e) {
+                final match = catalog
+                    .where(
+                      (c) =>
+                          c.stableId == e.stableId ||
+                          normalize(c.name) == normalize(e.name),
+                    )
+                    .firstOrNull;
+                return match == null
+                    ? e
+                    : e.copyWith(
+                        mediaUrl: match.mediaUrl,
+                        mediaStatus: match.mediaStatus,
+                      );
+              }).toList(),
+            ),
+          )
+          .toList(),
+    );
+  }
 }

@@ -133,7 +133,10 @@ class _MembershipScreenState extends State<MembershipScreen> {
               },
             ),
             membership.active
-                ? TrainingPage(key: ValueKey(trainingRevision))
+                ? TrainingPage(
+                    key: ValueKey(trainingRevision),
+                    storageUserId: assessmentStore.userId,
+                  )
                 : const LockedFeaturePage(
                     title: 'Entrenamiento bloqueado',
                     icon: Icons.fitness_center,
@@ -153,7 +156,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
                     icon: Icons.auto_awesome,
                   ),
             membership.active
-                ? const ProgressPage()
+                ? ProgressPage(storageUserId: assessmentStore.userId)
                 : const LockedFeaturePage(
                     title: 'Progreso bloqueado',
                     icon: Icons.show_chart,

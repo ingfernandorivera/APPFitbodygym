@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../data/exercise_catalog_repository.dart';
-import '../data/workout_plan_store.dart';
 import '../models/workout_plan.dart';
 import '../widgets/exercise_video_player.dart';
 
@@ -15,8 +15,6 @@ class WorkoutResultPage extends StatefulWidget {
 
 class _WorkoutResultPageState extends State<WorkoutResultPage> {
   late WorkoutPlan plan;
-  bool saving = false;
-  bool saved = false;
 
   @override
   void initState() {
@@ -36,19 +34,6 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
     }
   }
 
-  Future<void> savePlan() async {
-    setState(() => saving = true);
-    await WorkoutPlanStore().save(plan);
-    if (!mounted) return;
-    setState(() {
-      saving = false;
-      saved = true;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Rutina guardada como activa')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,6 +44,39 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
           Text(plan.name, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 6),
           Text('Objetivo: ${plan.goal}'),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.brand.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: AppColors.brand,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Rutina activa · versión ${plan.version}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           if (plan.isDemo) ...[
             const SizedBox(height: 12),
             const Card(
@@ -70,7 +88,7 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           ...plan.days.map(
             (day) => Card(
               margin: const EdgeInsets.only(bottom: 12),
@@ -90,7 +108,8 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
                         ),
                         isThreeLine: true,
                         trailing:
-                            exercise.mediaUrl != null &&
+                            exercise.mediaStatus == 'video' &&
+                                exercise.mediaUrl != null &&
                                 exercise.mediaUrl!.isNotEmpty
                             ? IconButton(
                                 tooltip: 'Ver video de la técnica',
@@ -115,22 +134,6 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
                       ),
                     )
                     .toList(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            onPressed: saving || saved ? null : savePlan,
-            icon: saving
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(saved ? Icons.check : Icons.bookmark_add_outlined),
-            label: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              child: Text(
-                saved ? 'Rutina activa' : 'Guardar como rutina activa',
               ),
             ),
           ),
