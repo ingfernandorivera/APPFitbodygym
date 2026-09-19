@@ -30,18 +30,18 @@ class MembershipStatusCard extends StatelessWidget {
         ? Colors.orangeAccent
         : Colors.greenAccent;
     final title = message != null
-        ? 'Atencion'
+        ? 'Atención'
         : !active
-        ? 'Membresia vencida'
+        ? (end == null ? 'Sin membresía vinculada' : 'Membresía inactiva')
         : warning
-        ? 'Proxima a vencer'
-        : 'Membresia activa';
+        ? 'Próxima a vencer'
+        : 'Membresía activa';
     final detail =
         message ??
         (!active
-            ? 'Tu membresia no esta activa. Conservas acceso a Inicio, Info y Perfil; entrenamiento, IA y progreso quedan bloqueados hasta renovar.'
+            ? 'Tu membresía no está activa. Conservas acceso a Inicio, evaluación, Info y Perfil; entrenamiento, IA y progreso quedan bloqueados hasta renovar.'
             : warning
-            ? 'Tu membresia vence en $days dia(s).'
+            ? 'Tu membresía vence en $days día(s).'
             : 'Tienes acceso a los beneficios de la app.');
     return Center(
       child: SingleChildScrollView(

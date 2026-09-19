@@ -44,7 +44,9 @@ class ExerciseVideoPlayer extends StatefulWidget {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -55,8 +57,8 @@ class ExerciseVideoPlayer extends StatefulWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -76,8 +78,8 @@ class ExerciseVideoPlayer extends StatefulWidget {
                 Text(
                   'Instrucciones',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -223,4 +225,3 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
     );
   }
 }
-

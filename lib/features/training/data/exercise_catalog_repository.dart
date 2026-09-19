@@ -31,7 +31,9 @@ class ExerciseCatalogRepository {
     if (catalog.isEmpty) return plan;
 
     final catalogMapById = {for (final e in catalog) e.id.toLowerCase(): e};
-    final catalogMapByName = {for (final e in catalog) _normalizeName(e.name): e};
+    final catalogMapByName = {
+      for (final e in catalog) _normalizeName(e.name): e,
+    };
 
     final enrichedDays = plan.days.map((day) {
       final enrichedExercises = day.exercises.map((exercise) {
@@ -40,13 +42,15 @@ class ExerciseCatalogRepository {
         }
 
         final normalizedExName = _normalizeName(exercise.name);
-        var match = catalogMapById[exercise.id.toLowerCase()] ??
+        var match =
+            catalogMapById[exercise.id.toLowerCase()] ??
             catalogMapByName[normalizedExName];
 
         if (match == null) {
           for (final catExercise in catalog) {
             final catNorm = _normalizeName(catExercise.name);
-            if (catNorm.contains(normalizedExName) || normalizedExName.contains(catNorm)) {
+            if (catNorm.contains(normalizedExName) ||
+                normalizedExName.contains(catNorm)) {
               match = catExercise;
               break;
             }
@@ -57,15 +61,23 @@ class ExerciseCatalogRepository {
           return WorkoutExercise(
             id: exercise.id,
             name: exercise.name,
-            muscleGroup: exercise.muscleGroup.isNotEmpty ? exercise.muscleGroup : match.muscleGroup,
+            muscleGroup: exercise.muscleGroup.isNotEmpty
+                ? exercise.muscleGroup
+                : match.muscleGroup,
             sets: exercise.sets,
             repetitions: exercise.repetitions,
             restSeconds: exercise.restSeconds,
-            instructions: exercise.instructions.isNotEmpty && exercise.instructions != 'Sigue la demostración del video.'
+            instructions:
+                exercise.instructions.isNotEmpty &&
+                    exercise.instructions != 'Sigue la demostración del video.'
                 ? exercise.instructions
                 : match.instructions,
-            commonMistakes: exercise.commonMistakes.isNotEmpty ? exercise.commonMistakes : match.commonMistakes,
-            alternative: exercise.alternative.isNotEmpty ? exercise.alternative : match.alternative,
+            commonMistakes: exercise.commonMistakes.isNotEmpty
+                ? exercise.commonMistakes
+                : match.commonMistakes,
+            alternative: exercise.alternative.isNotEmpty
+                ? exercise.alternative
+                : match.alternative,
             difficulty: exercise.difficulty,
             mediaUrl: match.mediaUrl,
           );
@@ -108,4 +120,3 @@ class ExerciseCatalogRepository {
     mediaUrl: row['media_url'] as String?,
   );
 }
-

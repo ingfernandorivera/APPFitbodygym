@@ -54,10 +54,7 @@ class _RegisterFormState extends State<RegisterForm> {
       await Supabase.instance.client.auth.signUp(
         email: email.text.trim(),
         password: password.text,
-        data: {
-          'full_name': fullName.text.trim(),
-          'password_created': true,
-        },
+        data: {'full_name': fullName.text.trim(), 'password_created': true},
       );
       await AppUserProfileStore().save(
         AppUserProfile(

@@ -2,116 +2,47 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/presentation/atomic_design/organisms/membership_status_card.dart';
 import '../../assessment/data/training_profile_store.dart';
-import '../../assessment/models/training_profile.dart';
-import '../../assessment/pages/training_assessment_page.dart';
-import '../../assessment/pages/training_profile_summary_page.dart';
+import '../../assessment/widgets/assessment_entry.dart';
 import '../../membership/models/membership_status.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({
     super.key,
     required this.membership,
     required this.onOpenAiChat,
+    this.onOpenInfo,
+    this.assessmentStore,
   });
 
   final MembershipStatus membership;
   final VoidCallback onOpenAiChat;
+  final VoidCallback? onOpenInfo;
+  final TrainingProfileStore? assessmentStore;
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  TrainingProfile? profile;
-
-  @override
-  void initState() {
-    super.initState();
-    loadProfile();
-  }
-
-  Future<void> loadProfile() async {
-    final savedProfile = await TrainingProfileStore().load();
-    if (mounted) setState(() => profile = savedProfile);
-  }
-
-  Future<void> openAssessment() async {
-    if (!widget.membership.active) return;
-    final result = await Navigator.push<TrainingProfile>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TrainingAssessmentPage(initialProfile: profile),
-      ),
-    );
-    if (result != null && mounted) {
-      setState(() => profile = result);
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => TrainingProfileSummaryPage(
-            profile: result,
-            onOpenAiChat: widget.onOpenAiChat,
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 760),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
+        children: [
+          AssessmentEntry(
+            store: assessmentStore ?? TrainingProfileStore(),
+            membershipActive: membership.active,
+            onOpenAiChat: onOpenAiChat,
+            onOpenInfo: onOpenInfo,
+            openAutomatically: true,
           ),
-        ),
-      );
-    }
-  }
-
-  Future<void> openSummary() async {
-    final current = profile;
-    if (current == null) return openAssessment();
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TrainingProfileSummaryPage(
-          profile: current,
-          onOpenAiChat: widget.onOpenAiChat,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasActiveMembership = widget.membership.active;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        MembershipStatusCard(
-          name: widget.membership.name,
-          end: widget.membership.end,
-          days: widget.membership.days,
-          active: widget.membership.active,
-        ),
-        const SizedBox(height: 18),
-        FilledButton.icon(
-          onPressed: hasActiveMembership
-              ? (profile == null ? openAssessment : openSummary)
-              : null,
-          icon: Icon(
-            hasActiveMembership ? Icons.auto_awesome : Icons.lock_outline,
-          ),
-          label: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            child: Text(
-              !hasActiveMembership
-                  ? 'Activa tu membresia para crear rutina'
-                  : profile == null
-                  ? 'Crear mi rutina con IA'
-                  : 'Ver mi perfil y crear rutina',
-              style: const TextStyle(fontSize: 17),
-            ),
-          ),
-        ),
-        if (hasActiveMembership && profile != null) ...[
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: openAssessment,
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Editar mi evaluacion'),
+          const SizedBox(height: 18),
+          MembershipStatusCard(
+            name: membership.name,
+            end: membership.end,
+            days: membership.days,
+            active: membership.active,
           ),
         ],
-      ],
-    );
-  }
+      ),
+    ),
+  );
 }

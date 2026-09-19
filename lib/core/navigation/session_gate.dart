@@ -55,7 +55,7 @@ class _SessionGateState extends State<SessionGate> {
         final passwordCreated =
             session.user.userMetadata?['password_created'] == true;
         return passwordCreated
-            ? const MembershipScreen()
+            ? MembershipScreen(key: ValueKey(session.user.id))
             : const CreatePasswordScreen();
       },
     );

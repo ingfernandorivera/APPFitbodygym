@@ -7,6 +7,7 @@ import '../../../shared/presentation/atomic_design/organisms/membership_status_c
 import '../../../shared/presentation/atomic_design/templates/main_navigation_template.dart';
 import '../../../shared/presentation/atomic_design/templates/membership_template.dart';
 import '../../ai_chat/pages/ai_chat_page.dart';
+import '../../assessment/data/training_profile_store.dart';
 import '../../gym_info/pages/gym_info_page.dart';
 import '../../home/pages/home_page.dart';
 import '../../profile/pages/profile_page.dart';
@@ -16,9 +17,14 @@ import '../models/membership_status.dart';
 import '../widgets/locked_feature_page.dart';
 
 class MembershipScreen extends StatefulWidget {
-  const MembershipScreen({super.key, this.previewMode = false});
+  const MembershipScreen({
+    super.key,
+    this.previewMode = false,
+    this.profileLoader,
+  });
 
   final bool previewMode;
+  final Future<Map<String, dynamic>?> Function()? profileLoader;
 
   @override
   State<MembershipScreen> createState() => _MembershipScreenState();
@@ -28,6 +34,9 @@ class _MembershipScreenState extends State<MembershipScreen> {
   var selectedIndex = 0;
   var trainingRevision = 0;
   late Future<Map<String, dynamic>?> profile;
+  late final assessmentStore = TrainingProfileStore(
+    storageUserId: widget.previewMode ? 'preview' : null,
+  );
 
   @override
   void initState() {
@@ -36,6 +45,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
   }
 
   Future<Map<String, dynamic>?> load() async {
+    if (widget.profileLoader != null) return widget.profileLoader!();
     if (widget.previewMode) {
       return {
         'full_name': 'Miembro de prueba',
@@ -60,7 +70,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return MembershipTemplate(
-            title: 'Mi membresia',
+            title: 'Mi membresía',
             onSignOut: signOut,
             body: const Center(child: CircularProgressIndicator()),
           );
@@ -68,26 +78,41 @@ class _MembershipScreenState extends State<MembershipScreen> {
 
         if (snapshot.hasError) {
           return MembershipTemplate(
-            title: 'Mi membresia',
+            title: 'Mi membresía',
             onSignOut: signOut,
-            body: const MembershipStatusCard.error(
-              'No se pudo consultar tu membresia. Intenta de nuevo.',
+            body: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Flexible(
+                  child: MembershipStatusCard.error(
+                    'No se pudo consultar tu membresía. Comprueba tu conexión e intenta de nuevo.',
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    final retry = load();
+                    setState(() {
+                      profile = retry;
+                    });
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
           );
         }
 
         final data = snapshot.data;
-        if (data == null) {
-          return MembershipTemplate(
-            title: 'Mi membresia',
-            onSignOut: signOut,
-            body: const MembershipStatusCard.error(
-              'Tu cuenta todavia no esta vinculada a una membresia. Consulta en recepcion.',
-            ),
-          );
-        }
-
-        final membership = MembershipStatus.fromData(data);
+        final membership = data == null
+            ? const MembershipStatus(
+                name: '',
+                end: null,
+                days: -1,
+                active: false,
+              )
+            : MembershipStatus.fromData(data);
         return MainNavigationTemplate(
           destinations: AuthenticatedDestinations.all,
           selectedIndex: selectedIndex,
@@ -101,7 +126,11 @@ class _MembershipScreenState extends State<MembershipScreen> {
           pages: [
             HomePage(
               membership: membership,
-              onOpenAiChat: () => setState(() => selectedIndex = 2),
+              assessmentStore: assessmentStore,
+              onOpenInfo: () => setState(() => selectedIndex = 4),
+              onOpenAiChat: () {
+                if (membership.active) setState(() => selectedIndex = 2);
+              },
             ),
             membership.active
                 ? TrainingPage(key: ValueKey(trainingRevision))
@@ -111,6 +140,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
                   ),
             membership.active
                 ? AiChatPage(
+                    profileStore: assessmentStore,
                     onOpenTraining: () {
                       setState(() {
                         selectedIndex = 1;
@@ -132,6 +162,11 @@ class _MembershipScreenState extends State<MembershipScreen> {
             ProfilePage(
               membership: membership,
               previewMode: widget.previewMode,
+              assessmentStore: assessmentStore,
+              onOpenInfo: () => setState(() => selectedIndex = 4),
+              onOpenAiChat: () {
+                if (membership.active) setState(() => selectedIndex = 2);
+              },
             ),
           ],
         );

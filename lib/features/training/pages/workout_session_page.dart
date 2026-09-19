@@ -38,7 +38,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       createdAt: DateTime.now(),
       days: [widget.day],
     );
-    final enrichedPlan = await const ExerciseCatalogRepository().enrichWorkoutPlan(tempPlan);
+    final enrichedPlan = await const ExerciseCatalogRepository()
+        .enrichWorkoutPlan(tempPlan);
     if (mounted && enrichedPlan.days.isNotEmpty) {
       setState(() {
         for (var i = 0; i < inputs.length; i++) {
@@ -114,19 +115,26 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                             value: input.completed,
                             title: Text(
                               ex.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             subtitle: Text(
                               '${ex.sets} series · ${ex.repetitions} reps · ${ex.restSeconds}s descanso',
                             ),
-                            onChanged: (value) =>
-                                setState(() => input.completed = value ?? false),
+                            onChanged: (value) => setState(
+                              () => input.completed = value ?? false,
+                            ),
                           ),
                         ),
                         if (ex.mediaUrl != null && ex.mediaUrl!.isNotEmpty)
                           IconButton(
                             tooltip: 'Ver técnica en video',
-                            icon: const Icon(Icons.play_circle_fill, color: Colors.amber, size: 32),
+                            icon: const Icon(
+                              Icons.play_circle_fill,
+                              color: Colors.amber,
+                              size: 32,
+                            ),
                             onPressed: () {
                               ExerciseVideoPlayer.showVideoModal(
                                 context,
@@ -233,4 +241,3 @@ class _ExerciseInput {
     repetitionsController.dispose();
   }
 }
-

@@ -8,9 +8,14 @@ import '../../training/data/workout_plan_store.dart';
 import '../data/ai_chat_service.dart';
 
 class AiChatPage extends StatefulWidget {
-  const AiChatPage({super.key, required this.onOpenTraining});
+  const AiChatPage({
+    super.key,
+    required this.onOpenTraining,
+    this.profileStore,
+  });
 
   final VoidCallback onOpenTraining;
+  final TrainingProfileStore? profileStore;
 
   @override
   State<AiChatPage> createState() => _AiChatPageState();
@@ -24,7 +29,8 @@ class _ChatMessage {
 }
 
 class _AiChatPageState extends State<AiChatPage> {
-  final aiChatService = AiChatService();
+  late final aiChatService = AiChatService();
+  late final profileStore = widget.profileStore ?? TrainingProfileStore();
   final controller = TextEditingController();
   final scrollController = ScrollController();
   final messages = <_ChatMessage>[
@@ -54,12 +60,13 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   Future<void> reviewProfile() async {
-    final saved = await TrainingProfileStore().load();
+    final saved = await profileStore.load();
     if (!mounted) return;
     final result = await Navigator.push<TrainingProfile>(
       context,
       MaterialPageRoute(
-        builder: (_) => TrainingAssessmentPage(initialProfile: saved),
+        builder: (_) =>
+            TrainingAssessmentPage(initialProfile: saved, store: profileStore),
       ),
     );
     if (result != null && mounted) {
@@ -76,7 +83,7 @@ class _AiChatPageState extends State<AiChatPage> {
     addMessage(text, fromUser: true);
     setState(() => working = true);
     try {
-      final profile = await TrainingProfileStore().load();
+      final profile = await profileStore.load();
       final activeWorkout = await WorkoutPlanStore().load();
       final history = messages
           .take(messages.length - 1)

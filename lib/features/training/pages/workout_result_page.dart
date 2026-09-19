@@ -26,7 +26,9 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
   }
 
   Future<void> _enrichPlan() async {
-    final enriched = await const ExerciseCatalogRepository().enrichWorkoutPlan(widget.plan);
+    final enriched = await const ExerciseCatalogRepository().enrichWorkoutPlan(
+      widget.plan,
+    );
     if (mounted) {
       setState(() {
         plan = enriched;
@@ -54,10 +56,7 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(
-            plan.name,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
+          Text(plan.name, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 6),
           Text('Objetivo: ${plan.goal}'),
           if (plan.isDemo) ...[
@@ -90,10 +89,16 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
                           '${exercise.muscleGroup} · ${exercise.sets} series · ${exercise.repetitions} reps · ${exercise.restSeconds}s descanso\n${exercise.instructions}',
                         ),
                         isThreeLine: true,
-                        trailing: exercise.mediaUrl != null && exercise.mediaUrl!.isNotEmpty
+                        trailing:
+                            exercise.mediaUrl != null &&
+                                exercise.mediaUrl!.isNotEmpty
                             ? IconButton(
                                 tooltip: 'Ver video de la técnica',
-                                icon: const Icon(Icons.play_circle_fill, color: Colors.amber, size: 30),
+                                icon: const Icon(
+                                  Icons.play_circle_fill,
+                                  color: Colors.amber,
+                                  size: 30,
+                                ),
                                 onPressed: () {
                                   ExerciseVideoPlayer.showVideoModal(
                                     context,
@@ -135,4 +140,3 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
     );
   }
 }
-
