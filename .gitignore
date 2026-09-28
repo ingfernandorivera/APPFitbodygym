@@ -46,3 +46,5 @@ app.*.map.json
 supabase.json
 `n# Local Codex transfer artifacts`n*.codexb64
 *.codexb64 
+.hermes/
+IDEA.md

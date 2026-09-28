@@ -55,6 +55,7 @@ class WorkoutExercise {
               .lastOrNull ??
           minReps);
   WorkoutExercise copyWith({
+    String? name,
     int? sets,
     int? restSeconds,
     int? targetMin,
@@ -64,6 +65,7 @@ class WorkoutExercise {
     String? mediaStatus,
   }) => WorkoutExercise.fromJson({
     ...toJson(),
+    'name': ?name,
     'sets': ?sets,
     'restSeconds': ?restSeconds,
     'targetMin': ?targetMin,

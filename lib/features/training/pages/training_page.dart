@@ -201,6 +201,14 @@ class _TrainingPageState extends State<TrainingPage> {
     super.dispose();
   }
 
+  String _letterForDay(int dayNumber) {
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    if (dayNumber >= 1 && dayNumber <= letters.length) {
+      return letters[dayNumber - 1];
+    }
+    return '$dayNumber';
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<WorkoutPlan?>(
@@ -218,30 +226,131 @@ class _TrainingPageState extends State<TrainingPage> {
           );
         }
         final plan = snapshot.data;
-        return ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
+        return Material(
+          color: Colors.transparent,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            children: [
+            // Encabezado tipo Smart Fit (Screenshot 1)
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    'Entrenamiento',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                const Text(
+                  'Rutinas',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
                   ),
                 ),
-                IconButton.filledTonal(
-                  tooltip: 'Biblioteca de ejercicios',
-                  onPressed: () => Navigator.push(
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFF33333A)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExerciseLibraryPage(
+                            repository: widget.repository,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.menu_book_outlined, size: 16),
+                      label: const Text(
+                        'Biblioteca',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Pestañas / Tabs Smart | Explorar | Guardados (Screenshot 1)
+            Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Smart',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 44,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFB800),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 24),
+                GestureDetector(
+                  onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
                           ExerciseLibraryPage(repository: widget.repository),
                     ),
                   ),
-                  icon: const Icon(Icons.menu_book_outlined),
+                  child: const Text(
+                    'Explorar',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
+                if (plan != null) ...[
+                  const SizedBox(width: 24),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => WorkoutResultPage(plan: plan),
+                      ),
+                    ),
+                    child: const Text(
+                      'Guardados',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
+            const SizedBox(height: 14),
+            // Descripción de la anamnesis (Screenshot 1)
+            const Text(
+              'Entrenamiento prescrito por FitBody Gym, de acuerdo con lo identificado en tu anamnesis y evaluación.',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 14),
             if (catalogResult != null &&
                 catalogResult!.source != CatalogSource.remote)
               ListTile(
@@ -251,6 +360,7 @@ class _TrainingPageState extends State<TrainingPage> {
                   child: const Text('Reintentar'),
                 ),
               ),
+            // Tarjeta de recuperación legacy segura (Hermes)
             if (hasUnclaimedLegacy) ...[
               const SizedBox(height: 12),
               Card(
@@ -302,98 +412,188 @@ class _TrainingPageState extends State<TrainingPage> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             if (plan == null)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Column(
                   children: [
-                    Icon(Icons.fitness_center, size: 52),
+                    Icon(
+                      Icons.fitness_center,
+                      size: 52,
+                      color: Color(0xFFFFB800),
+                    ),
                     SizedBox(height: 16),
                     Text(
                       'Aún no tienes una rutina activa',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Créala desde el botón principal de Inicio.',
                       textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textMuted),
                     ),
                   ],
                 ),
               )
             else ...[
-              Card(
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.assignment_outlined),
+              // Listado de rutinas catalogadas por día (Screenshot 1)
+              ...plan.days.map((day) {
+                final isCurrentDay = day.dayNumber == 1;
+                final durationMin = day.exercises.length * 4 + 10;
+                final letter = _letterForDay(day.dayNumber);
+                final titleText = day.focus.isNotEmpty ? day.focus : day.title;
+
+                return InkWell(
+                  onTap: () async {
+                    final completed = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => WorkoutSessionPage(
+                          planName: plan.name,
+                          day: day,
+                          planId: plan.id,
+                          planVersion: plan.version,
+                          storageUserId: store.storage.userId,
+                          historyStore: historyStore,
+                        ),
+                      ),
+                    );
+                    if (completed == true && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Entrenamiento guardado en Progreso.'),
+                        ),
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B1B1E),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF2B2B32)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Etiqueta "En curso" para la rutina activa (Screenshot 1)
+                        if (isCurrentDay) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFB800),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'En curso',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                        Row(
+                          children: [
+                            // Badge con letra A, B, C... en dorado (Screenshot 1)
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFC89314),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  letter,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            // Título de grupos musculares y duración
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    titleText,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$durationMin min · ${day.exercises.length} ejercicios',
+                                    style: const TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFF7E7E88),
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  title: Text(plan.name),
-                  subtitle: Text(
-                    '${plan.days.length} días por semana · ${plan.goal}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
+                );
+              }),
+              const SizedBox(height: 12),
+              // Enlace discreto para ver ficha técnica de la rutina completa
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => WorkoutResultPage(plan: plan),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Entrenamiento del día',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 10),
-              ...plan.days.map(
-                (day) => Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(14),
-                    leading: CircleAvatar(child: Text('${day.dayNumber}')),
-                    title: Text(day.title),
-                    subtitle: Text(
-                      '${day.focus}\n${day.exercises.length} ejercicios',
+                  icon: const Icon(
+                    Icons.assignment_outlined,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  label: Text(
+                    '${plan.name} (${plan.days.length} días · ${plan.goal})',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
                     ),
-                    isThreeLine: true,
-                    trailing: const Icon(Icons.play_arrow_rounded),
-                    onTap: () async {
-                      final completed = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => WorkoutSessionPage(
-                            planName: plan.name,
-                            day: day,
-                            planId: plan.id,
-                            planVersion: plan.version,
-                            storageUserId: store.storage.userId,
-                            historyStore: historyStore,
-                          ),
-                        ),
-                      );
-                      if (completed == true && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Entrenamiento guardado en Progreso.',
-                            ),
-                          ),
-                        );
-                      }
-                    },
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ],
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 }
