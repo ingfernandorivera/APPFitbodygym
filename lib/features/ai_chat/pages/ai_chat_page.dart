@@ -280,6 +280,7 @@ class _AiChatPageState extends State<AiChatPage> {
         return;
       }
       final current = await planStore.load();
+      final isNew = current == null;
       final plan = DemoWorkoutGenerator()
           .generate(profile)
           .copyWith(id: current?.id, version: (current?.version ?? 0) + 1);
@@ -287,7 +288,7 @@ class _AiChatPageState extends State<AiChatPage> {
         reply:
             'Propuesta de rutina adaptada a tu evaluación. Revisa los días y ejercicios antes de aplicar.',
         action: AiWorkoutAction(
-          type: AiActionType.proposeWorkout,
+          type: isNew ? AiActionType.proposeWorkout : AiActionType.modifyWorkout,
           plan: plan,
           expectedVersion: current?.version ?? 0,
           expectedPlanId: current?.id,
@@ -303,6 +304,70 @@ class _AiChatPageState extends State<AiChatPage> {
       if (mounted) {
         addMessage(
           'No se pudo crear una rutina compatible. Revisa tiempo, equipo y limitaciones en tu evaluación.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => working = false);
+    }
+  }
+
+  bool _looksLikeRoutineOrMentionsApply(String text) {
+    final lower = text.toLowerCase();
+    final mentionsApply = lower.contains('aplicar') ||
+        lower.contains('boton') ||
+        lower.contains('botón');
+    final hasDays = lower.contains('día') ||
+        lower.contains('dia') ||
+        lower.contains('series') ||
+        lower.contains('repeticiones') ||
+        lower.contains('rutina');
+    return mentionsApply || hasDays;
+  }
+
+  Future<void> _applyRoutineFromMessage(_ChatMessage message) async {
+    if (working) return;
+    setState(() => working = true);
+    try {
+      final training = await profileStore.load();
+      final appUser = await appProfileStore.load();
+      final userContext = UserProfileContext(
+        trainingProfile: training,
+        appProfile: appUser,
+      );
+      final activeWorkout = await planStore.load();
+      final focus = _extractRequestedFocus(
+        message.text,
+        messages.map((m) => m.text).toList(),
+      );
+
+      final proposal = _createFocusProposal(
+        userContext: userContext,
+        currentPlan: activeWorkout,
+        focusMuscles: focus,
+        customReply: message.text,
+      );
+
+      final profile = await profileStore.load();
+      final saved = await WorkoutProposalValidator(ExerciseCatalog.exercises)
+          .apply(
+            proposal.action,
+            confirmed: true,
+            store: planStore,
+            profile: profile,
+          );
+
+      if (!mounted) return;
+      setState(() {
+        message.status = 'applied';
+      });
+      addMessage(
+        '¡Rutina guardada y verificada como versión ${saved.version}! Ya puedes comenzar a entrenar en tu sección Entrenar.',
+      );
+      await persist();
+    } catch (_) {
+      if (mounted) {
+        addMessage(
+          'No se pudo aplicar la rutina directamente. Pulsa "Crear mi rutina" abajo para generarla con tu evaluación.',
         );
       }
     } finally {
@@ -966,7 +1031,50 @@ class _AiChatPageState extends State<AiChatPage> {
                   ),
                   child: message.response?.action.isProposal == true
                       ? proposalCard(message)
-                      : Text(message.text),
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(message.text),
+                            if (!message.fromUser &&
+                                _looksLikeRoutineOrMentionsApply(message.text)) ...[
+                              const SizedBox(height: 12),
+                              if (message.status == 'applied')
+                                Wrap(
+                                  spacing: 12,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check_circle, color: Colors.green, size: 18),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Rutina aplicada en Entrenar',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    FilledButton.tonalIcon(
+                                      icon: const Icon(Icons.fitness_center, size: 16),
+                                      onPressed: widget.onOpenTraining,
+                                      label: const Text('Ir a Entrenar'),
+                                    ),
+                                  ],
+                                )
+                              else
+                                FilledButton.icon(
+                                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                                  label: const Text('Aplicar esta rutina a mi plan'),
+                                  onPressed: working
+                                      ? null
+                                      : () => _applyRoutineFromMessage(message),
+                                ),
+                            ],
+                          ],
+                        ),
                 ),
               );
             },
