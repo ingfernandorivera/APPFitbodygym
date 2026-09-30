@@ -4,13 +4,95 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../assessment/data/training_profile_store.dart';
 import '../../assessment/models/training_profile.dart';
 import '../../assessment/pages/training_assessment_page.dart';
+import '../../profile/data/app_user_profile_store.dart';
+import '../../profile/models/app_user_profile.dart';
+import '../../training/data/demo_workout_generator.dart';
+import '../../training/data/exercise_catalog.dart';
 import '../../training/data/workout_plan_store.dart';
+import '../../training/models/workout_plan.dart';
 import '../data/ai_chat_service.dart';
 import '../data/chat_cache_store.dart';
 import '../data/workout_proposal_validator.dart';
 import '../models/ai_chat_response.dart';
-import '../../training/data/exercise_catalog.dart';
-import '../../training/data/demo_workout_generator.dart';
+
+class UserProfileContext {
+  const UserProfileContext({
+    this.trainingProfile,
+    this.appProfile,
+  });
+
+  final TrainingProfile? trainingProfile;
+  final AppUserProfile? appProfile;
+
+  String? get fullName =>
+      appProfile?.fullName.isNotEmpty == true ? appProfile!.fullName : null;
+
+  int? get age {
+    if (trainingProfile?.age != null && trainingProfile!.age > 0) {
+      return trainingProfile!.age;
+    }
+    if (appProfile?.birthDate.isNotEmpty == true) {
+      final date = DateTime.tryParse(appProfile!.birthDate);
+      if (date != null) {
+        final now = DateTime.now();
+        var calculated = now.year - date.year;
+        if (now.month < date.month ||
+            (now.month == date.month && now.day < date.day)) {
+          calculated--;
+        }
+        return calculated;
+      }
+    }
+    return null;
+  }
+
+  double? get weightKg => trainingProfile?.weightKg;
+  double? get heightCm => trainingProfile?.heightCm;
+  String get gender => trainingProfile?.gender ?? 'Sin indicar';
+
+  String get goal {
+    if (appProfile?.goal.isNotEmpty == true) return appProfile!.goal;
+    if (trainingProfile?.goal.isNotEmpty == true) return trainingProfile!.goal;
+    return 'Salud y acondicionamiento';
+  }
+
+  String get limitations {
+    final list = <String>[];
+    if (appProfile?.limitations.isNotEmpty == true) {
+      list.add(appProfile!.limitations);
+    }
+    if (trainingProfile?.limitations.isNotEmpty == true &&
+        !list.contains(trainingProfile!.limitations)) {
+      list.add(trainingProfile!.limitations);
+    }
+    return list.isNotEmpty ? list.join(', ') : 'Ninguna indicada';
+  }
+
+  int get daysPerWeek => trainingProfile?.daysPerWeek ?? 3;
+  int get minutesPerSession => trainingProfile?.minutesPerSession ?? 60;
+  String get experience => trainingProfile?.experience ?? 'Intermedio';
+  String get equipment => trainingProfile?.equipment ?? 'Gimnasio completo';
+  List<String> get priorityMuscles =>
+      trainingProfile?.priorityMuscles ?? const [];
+
+  Map<String, dynamic> toMergedMap() {
+    return {
+      if (fullName != null) 'fullName': fullName,
+      if (age != null) 'age': age,
+      if (weightKg != null) 'weightKg': weightKg,
+      if (heightCm != null) 'heightCm': heightCm,
+      'gender': gender,
+      'goal': goal,
+      'limitations': limitations,
+      'daysPerWeek': daysPerWeek,
+      'minutesPerSession': minutesPerSession,
+      'experience': experience,
+      'equipment': equipment,
+      'priorityMuscles': priorityMuscles,
+      if (trainingProfile != null) ...trainingProfile!.toJson(),
+    };
+  }
+}
 
 class AiChatPage extends StatefulWidget {
   const AiChatPage({
@@ -56,20 +138,22 @@ class _ChatMessage {
 
 class _AiChatPageState extends State<AiChatPage> {
   late final aiChatService = widget.chatService ?? AiChatService();
+  late final profileStore =
+      widget.profileStore ??
+      TrainingProfileStore(storageUserId: widget.storageUserId);
+  late final appProfileStore =
+      AppUserProfileStore(storageUserId: profileStore.userId);
   late final planStore =
       widget.planStore ?? WorkoutPlanStore(storageUserId: profileStore.userId);
   late final cacheStore =
       widget.cacheStore ?? ChatCacheStore(storageUserId: profileStore.userId);
   String? cacheError;
   bool loading = true;
-  late final profileStore =
-      widget.profileStore ??
-      TrainingProfileStore(storageUserId: widget.storageUserId);
   final controller = TextEditingController();
   final scrollController = ScrollController();
   final messages = <_ChatMessage>[
     _ChatMessage(
-      'Hola. Puedo ayudarte a crear tu rutina, revisar tu evaluacion y explicarte como usar la app. ¿Que necesitas?',
+      'Hola. Puedo ayudarte a crear o modificar tu rutina, revisar tus datos de perfil y responder dudas sobre tu entrenamiento. ¿Qué necesitas?',
     ),
   ];
   var working = false;
@@ -172,7 +256,7 @@ class _AiChatPageState extends State<AiChatPage> {
           .copyWith(id: current?.id, version: (current?.version ?? 0) + 1);
       final response = AiChatResponse(
         reply:
-            'Propuesta local según tu evaluación. Revisa los días y ejercicios antes de aplicar.',
+            'Propuesta de rutina adaptada a tu evaluación. Revisa los días y ejercicios antes de aplicar.',
         action: AiWorkoutAction(
           type: AiActionType.proposeWorkout,
           plan: plan,
@@ -225,6 +309,7 @@ class _AiChatPageState extends State<AiChatPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(message.text),
+        const SizedBox(height: 8),
         Text(
           'Propuesta: versión ${action.expectedVersion} → ${plan.version}',
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -241,6 +326,7 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
           ),
         ),
+        const SizedBox(height: 10),
         if (message.status == 'pending')
           Wrap(
             spacing: 8,
@@ -264,6 +350,7 @@ class _AiChatPageState extends State<AiChatPage> {
                 : message.status == 'invalid'
                 ? 'Propuesta inválida; no se puede aplicar.'
                 : 'Cancelada',
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
       ],
     );
@@ -305,6 +392,195 @@ class _AiChatPageState extends State<AiChatPage> {
     }
   }
 
+  bool _isAskingAboutProfileData(String text) {
+    final norm = text.toLowerCase().trim();
+    const triggers = [
+      'mis datos',
+      'mi perfil',
+      'mi edad',
+      'mi peso',
+      'mi estatura',
+      'mi altura',
+      'mi objetivo',
+      'mis objetivos',
+      'mi condicion',
+      'mi condición',
+      'mis limitaciones',
+      'cuanto peso',
+      'cuánto peso',
+      'que edad tengo',
+      'qué edad tengo',
+      'que datos tienes de mi',
+      'qué datos tienes de mí',
+      'ver mis datos',
+      'mostrar mis datos',
+      'ver mi perfil',
+    ];
+    return triggers.any((t) => norm.contains(t));
+  }
+
+  String _formatProfileDataResponse(
+    UserProfileContext ctx,
+    WorkoutPlan? activePlan,
+  ) {
+    final buffer = StringBuffer();
+    buffer.writeln(
+      'Aquí tienes los datos registrados en tu perfil y evaluación:\n',
+    );
+    if (ctx.fullName != null && ctx.fullName!.isNotEmpty) {
+      buffer.writeln('• **Nombre:** ${ctx.fullName}');
+    }
+    if (ctx.age != null) {
+      buffer.writeln('• **Edad:** ${ctx.age} años');
+    }
+    if (ctx.weightKg != null) {
+      buffer.writeln('• **Peso:** ${ctx.weightKg!.toStringAsFixed(1)} kg');
+    }
+    if (ctx.heightCm != null) {
+      buffer.writeln('• **Estatura:** ${ctx.heightCm!.toStringAsFixed(0)} cm');
+    }
+    buffer.writeln('• **Género:** ${ctx.gender}');
+    buffer.writeln('• **Objetivo:** ${ctx.goal}');
+    buffer.writeln('• **Nivel de experiencia:** ${ctx.experience}');
+    buffer.writeln('• **Días por semana:** ${ctx.daysPerWeek} días');
+    buffer.writeln('• **Tiempo por sesión:** ${ctx.minutesPerSession} min');
+    buffer.writeln('• **Equipo:** ${ctx.equipment}');
+    buffer.writeln('• **Condición o limitaciones:** ${ctx.limitations}');
+    if (ctx.priorityMuscles.isNotEmpty) {
+      buffer.writeln(
+        '• **Músculos prioritarios:** ${ctx.priorityMuscles.join(', ')}',
+      );
+    }
+    if (activePlan != null) {
+      buffer.writeln(
+        '• **Rutina activa:** ${activePlan.name} (${activePlan.days.length} días · ${activePlan.goal})',
+      );
+    } else {
+      buffer.writeln('• **Rutina activa:** Aún no has creado una rutina.');
+    }
+    buffer.writeln(
+      '\nPuedes pedirme en cualquier momento que modifique o reoriente tu rutina, o editar tus datos desde la pestaña Perfil.',
+    );
+    return buffer.toString();
+  }
+
+  bool _isRoutineChangeRequest(String text) {
+    final norm = text.toLowerCase().trim();
+    const triggers = [
+      'cambiar mi rutina',
+      'modificar mi rutina',
+      'cambiar rutina',
+      'modificar rutina',
+      'enfocada a',
+      'enfocada en',
+      'enfocado a',
+      'enfocado en',
+      'mas enfocado',
+      'más enfocado',
+      'mas enfocada',
+      'más enfocada',
+      'enfasis en',
+      'énfasis en',
+      'reorganizar mi rutina',
+      'reorganizar la rutina',
+      'adaptar mi rutina',
+      'rutina enfocada',
+      'rutina de pecho',
+      'rutina para piernas',
+      'cambiar ejercicios',
+      'poner mas pecho',
+      'poner más pecho',
+      'poner mas piernas',
+      'poner más piernas',
+      'poner mas brazos',
+      'poner más brazos',
+      'poner mas espalda',
+      'poner más espalda',
+    ];
+    return triggers.any((t) => norm.contains(t));
+  }
+
+  List<String> _extractRequestedFocus(String text) {
+    final norm = text.toLowerCase();
+    final result = <String>[];
+    if (norm.contains('pecho') || norm.contains('pectoral')) result.add('Pecho');
+    if (norm.contains('pierna') ||
+        norm.contains('cuadriceps') ||
+        norm.contains('cuádriceps') ||
+        norm.contains('isquio') ||
+        norm.contains('femoral')) {
+      result.add('Piernas');
+    }
+    if (norm.contains('espalda') || norm.contains('dorsal')) result.add('Espalda');
+    if (norm.contains('hombro') || norm.contains('deltoide')) result.add('Hombros');
+    if (norm.contains('brazo') ||
+        norm.contains('biceps') ||
+        norm.contains('bíceps') ||
+        norm.contains('triceps') ||
+        norm.contains('tríceps')) {
+      result.add('Brazos');
+    }
+    if (norm.contains('gluteo') || norm.contains('glúteo')) result.add('Glúteos');
+    if (norm.contains('abdomen') || norm.contains('core')) result.add('Core');
+    return result;
+  }
+
+  AiChatResponse _createFocusProposal({
+    required UserProfileContext userContext,
+    required WorkoutPlan? currentPlan,
+    required List<String> focusMuscles,
+  }) {
+    final baseProfile = userContext.trainingProfile ??
+        TrainingProfile(
+          weightKg: userContext.weightKg ?? 70,
+          heightCm: userContext.heightCm ?? 170,
+          age: userContext.age ?? 25,
+          goal: userContext.goal,
+          experience: userContext.experience,
+          daysPerWeek: userContext.daysPerWeek,
+          minutesPerSession: userContext.minutesPerSession,
+          preferences: '',
+          limitations: userContext.limitations,
+          equipment: userContext.equipment,
+        );
+
+    final effectiveProfile = baseProfile.copyWith(
+      priorityMuscles: focusMuscles.isNotEmpty
+          ? focusMuscles
+          : (baseProfile.priorityMuscles.isNotEmpty
+              ? baseProfile.priorityMuscles
+              : const ['Pecho', 'Piernas']),
+    );
+
+    final generator = DemoWorkoutGenerator();
+    final generatedPlan = generator.generate(effectiveProfile);
+    final focusStr = focusMuscles.isNotEmpty
+        ? focusMuscles.join(' y ')
+        : effectiveProfile.goal;
+
+    final newPlan = generatedPlan.copyWith(
+      id: currentPlan?.id,
+      version: (currentPlan?.version ?? 0) + 1,
+      name: focusMuscles.isNotEmpty
+          ? 'Rutina con énfasis en $focusStr'
+          : (currentPlan?.name ?? 'Rutina adaptada'),
+      changeReason: focusMuscles.isNotEmpty
+          ? 'Reorganización con mayor énfasis en $focusStr según tu solicitud'
+          : 'Ajuste de rutina según tus preferencias',
+    );
+
+    return AiChatResponse(
+      reply:
+          '¡Por supuesto! He reorganizado tu rutina dando mayor énfasis a $focusStr, respetando tus ${effectiveProfile.daysPerWeek} días por semana y tus ${effectiveProfile.minutesPerSession} min por sesión. Revisa la propuesta abajo y pulsa "Aplicar" para guardarla en tu entrenamiento.',
+      action: AiWorkoutAction(
+        type: AiActionType.modifyWorkout,
+        plan: newPlan,
+        expectedVersion: currentPlan?.version ?? 0,
+        expectedPlanId: currentPlan?.id,
+      ),
+    );
+  }
+
   Future<void> sendMessage([String? suggested]) async {
     final text = (suggested ?? controller.text).trim();
     if (text.isEmpty || working || loading) return;
@@ -313,8 +589,29 @@ class _AiChatPageState extends State<AiChatPage> {
     setState(() => working = true);
     try {
       await persist();
-      final profile = await profileStore.load();
+
+      final training = await profileStore.load();
+      final appUser = await appProfileStore.load();
+      final userContext = UserProfileContext(
+        trainingProfile: training,
+        appProfile: appUser,
+      );
       final activeWorkout = await planStore.load();
+
+      // 1. Consulta directa sobre datos de perfil o evaluación
+      if (_isAskingAboutProfileData(text)) {
+        final profileResponse = _formatProfileDataResponse(
+          userContext,
+          activeWorkout,
+        );
+        addMessage(profileResponse);
+        await persist();
+        return;
+      }
+
+      final isChangeRequest = _isRoutineChangeRequest(text);
+      final focusMuscles = _extractRequestedFocus(text);
+
       final history = messages
           .take(messages.length - 1)
           .skip(messages.length > 7 ? messages.length - 7 : 0)
@@ -325,22 +622,48 @@ class _AiChatPageState extends State<AiChatPage> {
             },
           )
           .toList();
-      final reply = await aiChatService.reply(
-        message: text,
-        history: history,
-        trainingProfile: profile?.toJson(),
-        activeWorkout: activeWorkout?.toJson(),
-      );
+
+      AiChatResponse? reply;
+      try {
+        reply = await aiChatService.reply(
+          message: text,
+          history: history,
+          trainingProfile: userContext.toMergedMap(),
+          activeWorkout: activeWorkout?.toJson(),
+        );
+      } catch (_) {
+        // En caso de error de red o saldo, si pidió cambiar la rutina, generamos propuesta local
+        if (isChangeRequest) {
+          reply = _createFocusProposal(
+            userContext: userContext,
+            currentPlan: activeWorkout,
+            focusMuscles: focusMuscles,
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      // Si el usuario pidió cambiar la rutina pero la respuesta de la IA remota no devolvió propuesta (sino solo texto o preguntas),
+      // generamos directamente la propuesta adaptada para que no quede con preguntas redundantes.
+      if (isChangeRequest && !reply.action.isProposal) {
+        reply = _createFocusProposal(
+          userContext: userContext,
+          currentPlan: activeWorkout,
+          focusMuscles: focusMuscles,
+        );
+      }
+
       if (mounted) {
         final issues = reply.action.isProposal
             ? WorkoutProposalValidator(
                 ExerciseCatalog.exercises,
-              ).validate(reply.action, current: activeWorkout, profile: profile)
+              ).validate(reply.action, current: activeWorkout, profile: training)
             : [];
         setState(
           () => messages.add(
             _ChatMessage(
-              reply.reply,
+              reply!.reply,
               response: reply,
               status: issues.isEmpty ? 'pending' : 'invalid',
             ),
@@ -369,7 +692,7 @@ class _AiChatPageState extends State<AiChatPage> {
 
   Widget quickAction(String label, IconData icon, VoidCallback onPressed) {
     return ActionChip(
-      avatar: Icon(icon, size: 18),
+      avatar: Icon(icon, size: 16),
       label: Text(label),
       onPressed: working || loading ? null : onPressed,
     );

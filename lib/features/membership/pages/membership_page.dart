@@ -144,6 +144,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
             membership.active
                 ? AiChatPage(
                     profileStore: assessmentStore,
+                    storageUserId: assessmentStore.userId,
                     onOpenTraining: () {
                       setState(() {
                         selectedIndex = 1;
