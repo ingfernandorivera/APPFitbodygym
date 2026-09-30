@@ -6,6 +6,7 @@ import 'package:fit_body_gym/features/training/data/exercise_catalog.dart';
 import 'package:fit_body_gym/features/training/data/workout_history_store.dart';
 import 'package:fit_body_gym/features/training/data/workout_plan_store.dart';
 import 'package:fit_body_gym/features/training/models/workout_plan.dart';
+import 'package:fit_body_gym/features/training/models/workout_session.dart';
 import 'package:fit_body_gym/features/training/pages/exercise_detail_page.dart';
 import 'package:fit_body_gym/features/training/pages/training_page.dart';
 import 'package:fit_body_gym/features/training/pages/workout_session_page.dart';
@@ -240,6 +241,137 @@ void main() {
       // Regresa a pendientes y la sección "Completados" desaparece
       expect(find.text('Completados'), findsNothing);
       expect(find.byIcon(Icons.check), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Indicación 6: Terminar rutina la mueve a Completadas esta semana, marca Terminada y activa En curso en la siguiente',
+    (tester) async {
+      final plans = WorkoutPlanStore(storageUserId: 'weekly-test-user');
+      final history = WorkoutHistoryStore(storageUserId: 'weekly-test-user');
+      final plan = WorkoutPlan(
+        name: 'Rutina Dividida',
+        goal: 'Hipertrofia',
+        createdAt: DateTime.now(),
+        totalWeeks: 4,
+        days: [
+          WorkoutDay(
+            dayNumber: 1,
+            title: 'Pecho y Tríceps',
+            focus: 'Pecho y Tríceps',
+            exercises: [
+              ExerciseCatalog.byId('dumbbell_row').copyWith(name: 'Press de Banca'),
+            ],
+          ),
+          WorkoutDay(
+            dayNumber: 2,
+            title: 'Espalda y Bíceps',
+            focus: 'Espalda y Bíceps',
+            exercises: [
+              ExerciseCatalog.byId('lat_pulldown').copyWith(name: 'Jalón al pecho'),
+            ],
+          ),
+        ],
+      );
+      await plans.save(plan);
+
+      // Cargar TrainingPage inicialmente
+      await tester.pumpWidget(
+        app(
+          TrainingPage(
+            planStore: plans,
+            historyStore: history,
+            storageUserId: 'weekly-test-user',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Marcador de semanas inicial
+      expect(find.text('Semana 1 de 4'), findsOneWidget);
+      expect(find.text('0/2 completadas'), findsOneWidget);
+
+      // Rutina A tiene 'En curso', Rutina B no
+      expect(find.text('En curso'), findsOneWidget);
+      expect(find.text('Completadas esta semana (1)'), findsNothing);
+
+      // Simulamos la finalización de la Rutina A (Día 1)
+      await history.add(
+        WorkoutSession(
+          planName: plan.name,
+          planId: plan.id,
+          dayNumber: 1,
+          dayTitle: 'Pecho y Tríceps',
+          completedAt: DateTime.now(),
+          durationSeconds: 1800,
+          results: [
+            ExerciseResult(
+              exerciseId: 'dumbbell_row',
+              exerciseName: 'Press de Banca',
+              sets: [
+                const SetResult(weightKg: 40, repetitions: 10, completed: true),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Ahora 1/2 completadas
+      expect(find.text('1/2 completadas'), findsOneWidget);
+
+      // Aparece la sección "Completadas esta semana"
+      expect(find.text('Completadas esta semana (1)'), findsOneWidget);
+      expect(find.textContaining('Terminada esta semana'), findsOneWidget);
+
+      // La Rutina B (Día 2) ahora tiene el badge 'En curso'
+      expect(find.text('En curso'), findsOneWidget);
+
+      // Simulamos la finalización de la Rutina B (Día 2)
+      await history.add(
+        WorkoutSession(
+          planName: plan.name,
+          planId: plan.id,
+          dayNumber: 2,
+          dayTitle: 'Espalda y Bíceps',
+          completedAt: DateTime.now(),
+          durationSeconds: 1800,
+          results: [
+            ExerciseResult(
+              exerciseId: 'lat_pulldown',
+              exerciseName: 'Jalón al pecho',
+              sets: [
+                const SetResult(weightKg: 50, repetitions: 12, completed: true),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Ahora 2/2 completadas y celebración de semana
+      expect(find.text('2/2 completadas'), findsOneWidget);
+      expect(find.text('Completadas esta semana (2)'), findsOneWidget);
+      expect(
+        find.text('¡Semana 1 completada! Todas las rutinas terminadas.'),
+        findsOneWidget,
+      );
+      expect(find.text('Comenzar Semana 2 ahora'), findsOneWidget);
+
+      // Al pulsar "Comenzar Semana 2 ahora"
+      await tester.tap(find.text('Comenzar Semana 2 ahora'));
+      await tester.pumpAndSettle();
+
+      // Marcador avanza a Semana 2 de 4
+      expect(find.text('Semana 2 de 4'), findsOneWidget);
+      expect(find.text('0/2 completadas'), findsOneWidget);
+
+      // Rutinas restauradas a pendientes y Día A vuelve a estar 'En curso'
+      expect(find.text('Completadas esta semana (1)'), findsNothing);
+      expect(find.text('Completadas esta semana (2)'), findsNothing);
+      expect(find.text('En curso'), findsOneWidget);
     },
   );
 }

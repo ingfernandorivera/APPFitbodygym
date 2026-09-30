@@ -184,6 +184,7 @@ class WorkoutPlan {
     this.version = 1,
     this.block = 1,
     this.week = 1,
+    this.totalWeeks = 4,
     this.plannedMinutes = 60,
     this.source = 'legacy',
     this.changeReason = '',
@@ -193,7 +194,7 @@ class WorkoutPlan {
   String get id => _id ?? 'plan_${createdAt.microsecondsSinceEpoch}';
   final DateTime? _startDate;
   DateTime get startDate => _startDate ?? createdAt;
-  final int version, block, week, plannedMinutes;
+  final int version, block, week, totalWeeks, plannedMinutes;
   final String source, changeReason;
   WorkoutPlan copyWith({
     String? name,
@@ -203,6 +204,9 @@ class WorkoutPlan {
     String? id,
     String? source,
     String? changeReason,
+    int? week,
+    int? totalWeeks,
+    int? block,
   }) => WorkoutPlan.fromJson({
     ...toJson(),
     'name': ?name,
@@ -212,6 +216,9 @@ class WorkoutPlan {
     'id': ?id,
     'source': ?source,
     'changeReason': ?changeReason,
+    'week': ?week,
+    'totalWeeks': ?totalWeeks,
+    'block': ?block,
   });
 
   final String name;
@@ -231,6 +238,7 @@ class WorkoutPlan {
     'startDate': startDate.toIso8601String(),
     'block': block,
     'week': week,
+    'totalWeeks': totalWeeks,
     'plannedMinutes': plannedMinutes,
     'source': source,
     'changeReason': changeReason,
@@ -249,6 +257,7 @@ class WorkoutPlan {
     startDate: DateTime.tryParse(json['startDate'] as String? ?? ''),
     block: json['block'] as int? ?? 1,
     week: json['week'] as int? ?? 1,
+    totalWeeks: json['totalWeeks'] as int? ?? 4,
     plannedMinutes: json['plannedMinutes'] as int? ?? 60,
     source: json['source'] as String? ?? 'legacy',
     changeReason: json['changeReason'] as String? ?? '',
