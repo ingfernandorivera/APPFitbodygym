@@ -8,6 +8,7 @@ import '../../profile/data/app_user_profile_store.dart';
 import '../../profile/models/app_user_profile.dart';
 import '../../training/data/demo_workout_generator.dart';
 import '../../training/data/exercise_catalog.dart';
+import '../../training/data/training_rules.dart';
 import '../../training/data/workout_plan_store.dart';
 import '../../training/models/workout_plan.dart';
 import '../data/ai_chat_service.dart';
@@ -191,10 +192,12 @@ class _AiChatPageState extends State<AiChatPage> {
         if (!fromUser && (response == null || !response.action.isProposal)) {
           if (_hasRoutineProposalContent(text)) {
             final focus = _extractRequestedFocus(text);
+            final days = _extractRequestedDays(text);
             response = _createFocusProposal(
               userContext: userContext,
               currentPlan: activeWorkout,
               focusMuscles: focus,
+              requestedDays: days,
               customReply: text,
             );
           }
@@ -311,17 +314,378 @@ class _AiChatPageState extends State<AiChatPage> {
     }
   }
 
-  bool _looksLikeRoutineOrMentionsApply(String text) {
+  int? _extractRequestedDays(String text) {
     final lower = text.toLowerCase();
-    final mentionsApply = lower.contains('aplicar') ||
-        lower.contains('boton') ||
-        lower.contains('botón');
-    final hasDays = lower.contains('día') ||
-        lower.contains('dia') ||
-        lower.contains('series') ||
-        lower.contains('repeticiones') ||
-        lower.contains('rutina');
-    return mentionsApply || hasDays;
+    final match = RegExp(r'(\d+)\s*d[ií]as?').firstMatch(lower);
+    if (match != null) {
+      final n = int.tryParse(match.group(1)!);
+      if (n != null && n >= 1 && n <= 7) return n;
+    }
+    if (lower.contains('un dia') || lower.contains('un día')) return 1;
+    if (lower.contains('dos dias') || lower.contains('dos días')) return 2;
+    if (lower.contains('tres dias') || lower.contains('tres días')) return 3;
+    if (lower.contains('cuatro dias') || lower.contains('cuatro días')) return 4;
+    if (lower.contains('cinco dias') || lower.contains('cinco días')) return 5;
+    if (lower.contains('seis dias') || lower.contains('seis días')) return 6;
+    if (lower.contains('siete dias') || lower.contains('siete días')) return 7;
+    return null;
+  }
+
+  bool _looksLikeRoutineOrMentionsApply(String text) {
+    return _hasRoutineProposalContent(text);
+  }
+
+  WorkoutExercise? _matchExercise(String rawName, int sets, int minReps, int maxReps) {
+    final norm = normalized(rawName)
+        .replaceAll('*', '')
+        .replaceAll(':', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '')
+        .replaceAll('/', ' ')
+        .trim();
+
+    // 1. Coincidencia directa por nombre
+    for (final e in ExerciseCatalog.exercises) {
+      final eNorm = normalized(e.name);
+      if (norm == eNorm || norm.contains(eNorm) || eNorm.contains(norm)) {
+        return e.copyWith(
+          sets: sets,
+          targetMin: minReps,
+          targetMax: maxReps,
+        );
+      }
+    }
+
+    // 2. Coincidencia por palabras clave
+    WorkoutExercise? bestMatch;
+    for (final e in ExerciseCatalog.exercises) {
+      // Pecho
+      if (norm.contains('plano') && (norm.contains('barra') || norm.contains('banca')) && e.id == 'bench_press_barbell') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('inclinado') && norm.contains('mancuerna') && e.id == 'incline_dumbbell_press') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('inclinado') && norm.contains('barra') && e.id == 'incline_barbell_press') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('inclinado') && (norm.contains('maquina') || norm.contains('pecho')) && e.id == 'incline_chest_machine') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('apertura') && (norm.contains('inclinad') || norm.contains('superior')) && e.id == 'incline_dumbbell_flyes') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('apertura') && (norm.contains('mancuerna') || norm.contains('plano') || norm.contains('pecho')) && e.id == 'dumbbell_flyes') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('peck') || norm.contains('pec-deck') || norm.contains('contractor')) && e.id == 'pec_deck') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('fondo') || norm.contains('dip')) && (norm.contains('paralela') || norm.contains('pecho')) && e.id == 'parallel_dips') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('cerrado') && e.id == 'close_grip_bench_press') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('declinado') && e.id == 'decline_dumbbell_press') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('flexion') || norm.contains('lagartija') || norm.contains('push')) &&
+          (norm.contains('elevad') || norm.contains('pies')) && e.id == 'elevated_push_ups') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('flexion') || norm.contains('lagartija') || norm.contains('push')) &&
+          (norm.contains('diamante') || norm.contains('juntas')) && e.id == 'diamond_push_ups') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('cruce') && norm.contains('polea') && e.id == 'pec_deck') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('press') || norm.contains('empuje')) && (norm.contains('maquina') || norm.contains('guiada')) && e.id == 'chest_press_machine') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('press de banca') && e.id == 'bench_press_barbell') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('press de pecho') && e.id == 'chest_press_machine') {
+        bestMatch = e; break;
+      }
+
+      // Espalda
+      if (norm.contains('jalon') && e.id == 'lat_pulldown') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('remo') && norm.contains('barra') && e.id == 'barbell_row') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('remo') && (norm.contains('maquina') || norm.contains('sentado')) && e.id == 'seated_row') {
+        bestMatch = e; break;
+      }
+
+      // Piernas
+      if (norm.contains('sentadilla') && norm.contains('barra') && e.id == 'squat_barbell') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('sentadilla') && e.id == 'goblet_squat') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('prensa') && e.id == 'leg_press') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('pantorrilla') || norm.contains('gemelo')) && e.id == 'calf_raise') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('femoral') || norm.contains('isquio')) && e.id == 'leg_curl') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('peso muerto') && e.id == 'romanian_deadlift_barbell') {
+        bestMatch = e; break;
+      }
+
+      // Brazos y hombros
+      if (norm.contains('curl') && (norm.contains('barra') || norm.contains('biceps') || norm.contains('bíceps')) && e.id == 'bicep_curl_barbell') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('extension') && (norm.contains('triceps') || norm.contains('tríceps')) && e.id == 'tricep_extension_dumbbell') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('face pull') && e.id == 'face_pull') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('militar') && e.id == 'military_press') {
+        bestMatch = e; break;
+      }
+    }
+
+    if (bestMatch != null) {
+      return bestMatch.copyWith(
+        sets: sets,
+        targetMin: minReps,
+        targetMax: maxReps,
+      );
+    }
+
+    // 3. Fallback: buscar cualquier ejercicio del catálogo que comparta alguna palabra clave
+    for (final e in ExerciseCatalog.exercises) {
+      final words = normalized(e.name).split(' ').where((w) => w.length > 3);
+      for (final w in words) {
+        if (norm.contains(w)) {
+          return e.copyWith(
+            sets: sets,
+            targetMin: minReps,
+            targetMax: maxReps,
+          );
+        }
+      }
+    }
+
+    return null;
+  }
+
+  WorkoutPlan? _parseWorkoutPlanFromAiText(
+    String text, {
+    required WorkoutPlan? currentPlan,
+    required String planName,
+    required String goal,
+    required int daysCount,
+  }) {
+    final lines = text.split('\n');
+    final parsedDays = <WorkoutDay>[];
+    int currentDayNum = 0;
+    String currentDayTitle = '';
+    final currentDayExercises = <WorkoutExercise>[];
+    final dayRegex = RegExp(
+      r'(?:####\s*|###\s*|\*\*)?D[íi]a\s+(\d+)\s*[:–—\-]\s*([^\n\*]+)(?:\*\*)?',
+      caseSensitive: false,
+    );
+
+    void finishCurrentDay() {
+      if (currentDayNum > 0 && currentDayExercises.isNotEmpty) {
+        parsedDays.add(
+          WorkoutDay(
+            dayNumber: currentDayNum,
+            title: currentDayTitle.isNotEmpty ? currentDayTitle : 'Día $currentDayNum',
+            focus: goal,
+            exercises: List.of(currentDayExercises),
+          ),
+        );
+        currentDayExercises.clear();
+      }
+    }
+
+    for (final rawLine in lines) {
+      final line = rawLine.trim();
+      final dayMatch = dayRegex.firstMatch(line);
+      if (dayMatch != null) {
+        finishCurrentDay();
+        currentDayNum = int.tryParse(dayMatch.group(1) ?? '') ?? (parsedDays.length + 1);
+        currentDayTitle = (dayMatch.group(2) ?? '').replaceAll('*', '').trim();
+        continue;
+      }
+
+      if (currentDayNum > 0 && (line.startsWith('-') || line.startsWith('*') || line.startsWith('•'))) {
+        final cleaned = line.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim();
+        final parts = cleaned.split(RegExp(r'[:–—-]'));
+        final rawName = parts[0].replaceAll('*', '').trim();
+
+        int sets = 3;
+        int minReps = 10;
+        int maxReps = 12;
+
+        final setsMatch = RegExp(r'(\d+)\s*series', caseSensitive: false).firstMatch(cleaned);
+        if (setsMatch != null) sets = int.tryParse(setsMatch.group(1) ?? '') ?? 3;
+
+        final repsMatch = RegExp(
+          r'(\d+)(?:\s*[-–a]\s*(\d+))?\s*(?:reps|repeticiones)',
+          caseSensitive: false,
+        ).firstMatch(cleaned);
+        if (repsMatch != null) {
+          minReps = int.tryParse(repsMatch.group(1) ?? '') ?? 10;
+          maxReps = int.tryParse(repsMatch.group(2) ?? '') ?? minReps;
+        } else if (cleaned.toLowerCase().contains('fallo')) {
+          minReps = 8;
+          maxReps = 12;
+        }
+
+        var exercise = _matchExercise(rawName, sets, minReps, maxReps);
+        if (exercise == null) {
+          final fallbackMuscle = goal.toLowerCase();
+          exercise = ExerciseCatalog.exercises.firstWhere(
+            (e) => !currentDayExercises.any((ce) => ce.stableId == e.stableId) &&
+                (fallbackMuscle.contains('pecho')
+                    ? (e.primaryMuscles.contains('Pecho') || e.muscleGroup.toLowerCase().contains('pecho'))
+                    : true),
+            orElse: () => ExerciseCatalog.exercises.first,
+          ).copyWith(sets: sets, targetMin: minReps, targetMax: maxReps);
+        }
+
+        if (!currentDayExercises.any((e) => e.stableId == exercise!.stableId)) {
+          currentDayExercises.add(exercise);
+        }
+      }
+    }
+    finishCurrentDay();
+
+    if (parsedDays.isEmpty) return null;
+
+    return WorkoutPlan(
+      id: currentPlan?.id,
+      version: (currentPlan?.version ?? 0) + 1,
+      name: planName,
+      goal: goal,
+      plannedMinutes: 60,
+      days: parsedDays,
+      changeReason: 'Rutina adaptada con los ejercicios exactos solicitados',
+      createdAt: DateTime.now(),
+      block: 1,
+      week: 1,
+      source: 'ai',
+      isDemo: false,
+    );
+  }
+
+  WorkoutPlan _generateTargetedPlan(
+    TrainingProfile profile, {
+    required WorkoutPlan? currentPlan,
+    required List<String> focusMuscles,
+    required int daysCount,
+    required String planName,
+    required String focusStr,
+  }) {
+    final effectiveDays = (daysCount >= 1 && daysCount <= 7)
+        ? daysCount
+        : profile.daysPerWeek;
+
+    final effectiveProfile = profile.copyWith(
+      daysPerWeek: effectiveDays,
+      priorityMuscles: focusMuscles.isNotEmpty
+          ? focusMuscles
+          : profile.priorityMuscles,
+    );
+
+    final targetedPool = ExerciseCatalog.exercises
+        .where((e) => allowedExercise(e, effectiveProfile))
+        .where((e) {
+          if (focusMuscles.isEmpty) return true;
+          return focusMuscles.any((m) {
+            final normM = normalized(m);
+            return normalized(e.muscleGroup).contains(normM) ||
+                e.primaryMuscles.any((p) => normalized(p).contains(normM));
+          });
+        })
+        .toList();
+
+    final generalPool = ExerciseCatalog.exercises
+        .where((e) => allowedExercise(e, effectiveProfile))
+        .toList();
+
+    final pool = targetedPool.isNotEmpty ? targetedPool : generalPool;
+
+    final days = <WorkoutDay>[];
+    for (var day = 0; day < effectiveDays; day++) {
+      final selected = <WorkoutExercise>[];
+      final dayPool = List<WorkoutExercise>.of(pool);
+
+      for (var i = 0; i < dayPool.length && selected.length < 4; i++) {
+        final exercise = dayPool[(i + day * 2) % dayPool.length];
+        if (!selected.any((e) => e.stableId == exercise.stableId)) {
+          selected.add(
+            exercise.copyWith(
+              sets: 3,
+              targetMin: 8,
+              targetMax: 12,
+              targetRir: 2,
+              restSeconds: 75,
+            ),
+          );
+        }
+      }
+
+      if (selected.length < 3) {
+        for (final ex in generalPool) {
+          if (selected.length >= 3) break;
+          if (!selected.any((e) => e.stableId == ex.stableId)) {
+            selected.add(
+              ex.copyWith(
+                sets: 3,
+                targetMin: 10,
+                targetMax: 12,
+                restSeconds: 60,
+              ),
+            );
+          }
+        }
+      }
+
+      final dayLetter = String.fromCharCode(65 + day);
+      final dayTitle = focusMuscles.isNotEmpty
+          ? '${focusMuscles.join(' + ')} $dayLetter'
+          : 'Día ${day + 1}';
+
+      days.add(
+        WorkoutDay(
+          dayNumber: day + 1,
+          title: dayTitle,
+          focus: focusStr,
+          exercises: selected,
+        ),
+      );
+    }
+
+    return WorkoutPlan(
+      id: currentPlan?.id,
+      version: (currentPlan?.version ?? 0) + 1,
+      name: planName,
+      goal: focusStr,
+      plannedMinutes: 60,
+      days: days,
+      changeReason: 'Rutina adaptada con mayor énfasis en $focusStr según tu solicitud',
+      createdAt: DateTime.now(),
+      block: 1,
+      week: 1,
+      source: 'ai',
+      isDemo: false,
+    );
   }
 
   Future<void> _applyRoutineFromMessage(_ChatMessage message) async {
@@ -335,15 +699,14 @@ class _AiChatPageState extends State<AiChatPage> {
         appProfile: appUser,
       );
       final activeWorkout = await planStore.load();
-      final focus = _extractRequestedFocus(
-        message.text,
-        messages.map((m) => m.text).toList(),
-      );
+      final focus = _extractRequestedFocus(message.text);
+      final days = _extractRequestedDays(message.text);
 
       final proposal = _createFocusProposal(
         userContext: userContext,
         currentPlan: activeWorkout,
         focusMuscles: focus,
+        requestedDays: days,
         customReply: message.text,
       );
 
@@ -754,33 +1117,44 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   bool _hasRoutineProposalContent(String text) {
-    final lower = text.toLowerCase();
-    final hasDays = (lower.contains('día 1') || lower.contains('dia 1')) &&
-        (lower.contains('día 2') || lower.contains('dia 2'));
-    final hasRoutineHeaders = lower.contains('rutina propuesta') ||
-        lower.contains('rutina modificada') ||
-        lower.contains('### rutina') ||
-        lower.contains('plan de entrenamiento');
-    final mentionsApply = lower.contains('botón "aplicar"') ||
-        lower.contains("botón 'aplicar'") ||
-        lower.contains('boton aplicar') ||
-        lower.contains('botón aplicar') ||
-        lower.contains('pulsar el botón') ||
-        lower.contains('presiona el botón') ||
-        lower.contains('aplicar esta rutina');
-    return (hasDays && (hasRoutineHeaders || mentionsApply || lower.contains('series'))) ||
-        (hasRoutineHeaders && mentionsApply);
+    final lower = text.toLowerCase().trim();
+    if (lower.isEmpty) return false;
+
+    // Descartar saludos, confirmaciones y resúmenes de perfil
+    if (lower.startsWith('¡hola') ||
+        lower.startsWith('hola') ||
+        lower.contains('¡hola de nuevo') ||
+        lower.contains('hola de nuevo') ||
+        lower.startsWith('¡rutina guardada') ||
+        lower.startsWith('rutina guardada') ||
+        lower.startsWith('versión anterior') ||
+        lower.startsWith('evaluacion actualizada') ||
+        lower.contains('datos registrados en tu perfil') ||
+        lower.contains('no pude conectar') ||
+        lower.contains('no se pudo crear')) {
+      return false;
+    }
+
+    final hasDay1 = lower.contains('día 1') || lower.contains('dia 1');
+    final hasSetsOrReps = lower.contains('series') ||
+        lower.contains('repeticiones') ||
+        lower.contains('reps') ||
+        RegExp(r'\d+\s*[x×]\s*\d+').hasMatch(lower);
+
+    // Debe tener al menos Día 1 y especificaciones de series/reps
+    if (!hasDay1 || !hasSetsOrReps) {
+      return false;
+    }
+
+    final hasDay2 = lower.contains('día 2') || lower.contains('dia 2');
+    final hasMultipleExerciseBullets =
+        RegExp(r'[-*•]\s+[a-zA-ZáéíóúÁÉÍÓÚ]').allMatches(text).length >= 2;
+
+    return hasDay2 || hasMultipleExerciseBullets;
   }
 
-  List<String> _extractRequestedFocus(String text, [List<String>? extraTexts]) {
-    final combined = StringBuffer(text.toLowerCase());
-    if (extraTexts != null) {
-      for (final t in extraTexts) {
-        combined.write(' ');
-        combined.write(t.toLowerCase());
-      }
-    }
-    final norm = combined.toString();
+  List<String> _extractMusclesFromText(String text) {
+    final norm = text.toLowerCase();
     final result = <String>[];
     if (norm.contains('pecho') || norm.contains('pectoral')) result.add('Pecho');
     if (norm.contains('pierna') ||
@@ -806,10 +1180,29 @@ class _AiChatPageState extends State<AiChatPage> {
     return result;
   }
 
+  List<String> _extractRequestedFocus(String text, [List<String>? extraTexts]) {
+    // 1. Extraer del texto principal (ej. el mensaje actual del usuario)
+    final fromMain = _extractMusclesFromText(text);
+    if (fromMain.isNotEmpty) {
+      return fromMain;
+    }
+    // 2. Solo si el texto principal no menciona músculos, buscar en los mensajes previos más recientes
+    if (extraTexts != null && extraTexts.isNotEmpty) {
+      for (final t in extraTexts.reversed) {
+        final fromPrev = _extractMusclesFromText(t);
+        if (fromPrev.isNotEmpty) {
+          return fromPrev;
+        }
+      }
+    }
+    return [];
+  }
+
   AiChatResponse _createFocusProposal({
     required UserProfileContext userContext,
     required WorkoutPlan? currentPlan,
     required List<String> focusMuscles,
+    int? requestedDays,
     String? customReply,
   }) {
     final baseProfile = userContext.trainingProfile ??
@@ -826,7 +1219,12 @@ class _AiChatPageState extends State<AiChatPage> {
           equipment: userContext.equipment,
         );
 
+    final effectiveDays = (requestedDays != null && requestedDays >= 1 && requestedDays <= 7)
+        ? requestedDays
+        : baseProfile.daysPerWeek;
+
     final effectiveProfile = baseProfile.copyWith(
+      daysPerWeek: effectiveDays,
       priorityMuscles: focusMuscles.isNotEmpty
           ? focusMuscles
           : (baseProfile.priorityMuscles.isNotEmpty
@@ -834,26 +1232,40 @@ class _AiChatPageState extends State<AiChatPage> {
               : const ['Pecho', 'Piernas']),
     );
 
-    final generator = DemoWorkoutGenerator();
-    final generatedPlan = generator.generate(effectiveProfile);
     final focusStr = focusMuscles.isNotEmpty
         ? focusMuscles.join(' y ')
         : effectiveProfile.goal;
 
-    final isNew = currentPlan == null;
-    final newPlan = generatedPlan.copyWith(
-      id: currentPlan?.id,
-      version: (currentPlan?.version ?? 0) + 1,
-      name: focusMuscles.isNotEmpty
-          ? 'Rutina con énfasis en $focusStr'
-          : (currentPlan?.name ?? 'Rutina adaptada'),
-      changeReason: focusMuscles.isNotEmpty
-          ? 'Reorganización con mayor énfasis en $focusStr según tu solicitud'
-          : 'Ajuste de rutina según tus preferencias',
+    final planName = focusMuscles.isNotEmpty
+        ? 'Rutina con énfasis en $focusStr'
+        : (currentPlan?.name ?? 'Rutina adaptada');
+
+    WorkoutPlan? newPlan;
+
+    // 1. Prioridad: Si la IA redactó un desglose de rutina en texto, parseamos sus días y ejercicios exactos
+    if (customReply != null && _hasRoutineProposalContent(customReply)) {
+      newPlan = _parseWorkoutPlanFromAiText(
+        customReply,
+        currentPlan: currentPlan,
+        planName: planName,
+        goal: focusStr,
+        daysCount: effectiveDays,
+      );
+    }
+
+    // 2. Si no se pudo parsear de la IA, generamos un plan enfocado directamente en los músculos solicitados
+    newPlan ??= _generateTargetedPlan(
+      effectiveProfile,
+      currentPlan: currentPlan,
+      focusMuscles: focusMuscles,
+      daysCount: effectiveDays,
+      planName: planName,
+      focusStr: focusStr,
     );
 
+    final isNew = currentPlan == null;
     final replyText = customReply ??
-        '¡Listo! He configurado tu rutina con énfasis en $focusStr (${effectiveProfile.daysPerWeek} días, ${effectiveProfile.minutesPerSession} min/sesión). Revisa el desglose a continuación y presiona el botón "Aplicar rutina a mi plan" para dejarla guardada y lista en tu sección de Entrenar.';
+        '¡Listo! He configurado tu rutina con énfasis en $focusStr ($effectiveDays días, ${effectiveProfile.minutesPerSession} min/sesión). Revisa el desglose a continuación y presiona el botón "Aplicar rutina a mi plan" para dejarla guardada y lista en tu sección de Entrenar.';
 
     return AiChatResponse(
       reply: replyText,
@@ -922,31 +1334,32 @@ class _AiChatPageState extends State<AiChatPage> {
       } catch (_) {
         // En caso de error de red o saldo, si pidió cambiar la rutina, generamos propuesta local
         if (isChangeRequest) {
+          final requestedDays = _extractRequestedDays(text);
           reply = _createFocusProposal(
             userContext: userContext,
             currentPlan: activeWorkout,
             focusMuscles: focusMuscles,
+            requestedDays: requestedDays,
           );
         } else {
           rethrow;
         }
       }
 
-      // Si el usuario pidió cambiar la rutina o si la respuesta del asistente describe una rutina / menciona el botón Aplicar,
-      // pero la IA remota no devolvió el objeto proposal (sino solo texto),
-      // convertimos la respuesta en propuesta interactiva para que aparezca SIEMPRE el botón "Aplicar rutina a mi plan".
-      final shouldAttachProposal = isChangeRequest ||
-          _hasRoutineProposalContent(reply.reply);
+      // Convertimos en propuesta interactiva cuando la IA entregó una rutina estructurada
+      // o cuando el usuario solicitó explícitamente cambiar su rutina a músculos específicos.
+      final shouldAttachProposal = _hasRoutineProposalContent(reply.reply) ||
+          (isChangeRequest && focusMuscles.isNotEmpty);
 
       if (shouldAttachProposal && !reply.action.isProposal) {
-        final allFocusMuscles = _extractRequestedFocus(
-          text,
-          messages.map((m) => m.text).toList() + [reply.reply],
-        );
+        final focusMusclesInReply = _extractRequestedFocus(text, [reply.reply]);
+        final targetMuscles = focusMusclesInReply.isNotEmpty ? focusMusclesInReply : focusMuscles;
+        final requestedDays = _extractRequestedDays(text) ?? _extractRequestedDays(reply.reply);
         reply = _createFocusProposal(
           userContext: userContext,
           currentPlan: activeWorkout,
-          focusMuscles: allFocusMuscles,
+          focusMuscles: targetMuscles,
+          requestedDays: requestedDays,
           customReply: reply.reply,
         );
       }
