@@ -168,18 +168,47 @@ class _AiChatPageState extends State<AiChatPage> {
     try {
       final saved = await cacheStore.load();
       if (!mounted) return;
-      final restored = saved
-          .map(
-            (m) => _ChatMessage(
-              m['text'] as String,
-              fromUser: m['fromUser'] as bool? ?? false,
-              status: m['status'] as String? ?? 'pending',
-              response: m['response'] == null
-                  ? null
-                  : AiChatResponse.parse(m['response']),
-            ),
-          )
-          .toList();
+
+      final training = await profileStore.load();
+      final appUser = await appProfileStore.load();
+      final userContext = UserProfileContext(
+        trainingProfile: training,
+        appProfile: appUser,
+      );
+      final activeWorkout = await planStore.load();
+
+      final restored = <_ChatMessage>[];
+      for (final m in saved) {
+        final text = m['text'] as String;
+        final fromUser = m['fromUser'] as bool? ?? false;
+        final status = m['status'] as String? ?? 'pending';
+        AiChatResponse? response;
+        if (m['response'] != null) {
+          try {
+            response = AiChatResponse.parse(m['response']);
+          } catch (_) {}
+        }
+        if (!fromUser && (response == null || !response.action.isProposal)) {
+          if (_hasRoutineProposalContent(text)) {
+            final focus = _extractRequestedFocus(text);
+            response = _createFocusProposal(
+              userContext: userContext,
+              currentPlan: activeWorkout,
+              focusMuscles: focus,
+              customReply: text,
+            );
+          }
+        }
+        restored.add(
+          _ChatMessage(
+            text,
+            fromUser: fromUser,
+            status: status,
+            response: response,
+          ),
+        );
+      }
+
       if (restored.isNotEmpty) {
         setState(() {
           messages.clear();
@@ -305,53 +334,162 @@ class _AiChatPageState extends State<AiChatPage> {
   Widget proposalCard(_ChatMessage message) {
     final action = message.response!.action;
     final plan = action.plan!;
+    final colors = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(message.text),
-        const SizedBox(height: 8),
-        Text(
-          'Propuesta: versión ${action.expectedVersion} → ${plan.version}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        Text(plan.changeReason),
-        Text(
-          '${plan.days.length} días · hasta ${plan.plannedMinutes} min por sesión',
-        ),
-        ...plan.days.map(
-          (d) => Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              'Día ${d.dayNumber}: ${d.exercises.map((e) => '${e.name} (${e.sets} × ${e.minReps}–${e.maxReps}, RIR ${e.targetRir}, ${e.restSeconds} s)').join(' · ')}',
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: message.status == 'applied'
+                  ? Colors.green.shade600
+                  : colors.primary.withValues(alpha: 0.6),
+              width: 1.5,
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        if (message.status == 'pending')
-          Wrap(
-            spacing: 8,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FilledButton(
-                onPressed: working ? null : () => changeProposal(message, true),
-                child: const Text('Aplicar'),
+              Row(
+                children: [
+                  Icon(
+                    message.status == 'applied'
+                        ? Icons.check_circle
+                        : Icons.auto_awesome,
+                    color: message.status == 'applied'
+                        ? Colors.green
+                        : colors.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      plan.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: working
-                    ? null
-                    : () => changeProposal(message, false),
-                child: const Text('Cancelar'),
+              const SizedBox(height: 6),
+              Text(
+                'Propuesta: versión ${action.expectedVersion} → ${plan.version}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
+              Text(
+                '${plan.days.length} días de entrenamiento · hasta ${plan.plannedMinutes} min por sesión',
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
+              if (plan.changeReason.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  plan.changeReason,
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              const Divider(height: 20),
+              ...plan.days.map(
+                (d) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Día ${d.dayNumber}: ${d.title} (${d.focus})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        d.exercises
+                            .map((e) =>
+                                '${e.name} (${e.sets}×${e.minReps}–${e.maxReps})')
+                            .join(' · '),
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (message.status == 'pending')
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    FilledButton(
+                      onPressed:
+                          working ? null : () => changeProposal(message, true),
+                      child: const Text('Aplicar'),
+                    ),
+                    TextButton(
+                      onPressed:
+                          working ? null : () => changeProposal(message, false),
+                      child: const Text('Cancelar'),
+                    ),
+                  ],
+                )
+              else if (message.status == 'applied')
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 18),
+                        SizedBox(width: 4),
+                        Text(
+                          'Rutina aplicada en Entrenar',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    FilledButton.tonalIcon(
+                      icon: const Icon(Icons.fitness_center, size: 16),
+                      onPressed: widget.onOpenTraining,
+                      label: const Text('Ir a Entrenar'),
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  message.status == 'invalid'
+                      ? 'Propuesta inválida; no se puede aplicar.'
+                      : 'Propuesta cancelada',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colors.error,
+                  ),
+                ),
             ],
-          )
-        else
-          Text(
-            message.status == 'applied'
-                ? 'Aplicada'
-                : message.status == 'invalid'
-                ? 'Propuesta inválida; no se puede aplicar.'
-                : 'Cancelada',
-            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
+        ),
       ],
     );
   }
@@ -466,11 +604,51 @@ class _AiChatPageState extends State<AiChatPage> {
 
   bool _isRoutineChangeRequest(String text) {
     final norm = text.toLowerCase().trim();
-    const triggers = [
+    if (norm.isEmpty) return false;
+
+    const directPhrases = [
       'cambiar mi rutina',
       'modificar mi rutina',
       'cambiar rutina',
       'modificar rutina',
+      'la modifique tu',
+      'la modifiques tu',
+      'la modifiques tú',
+      'modifique tu mi rutina',
+      'modifiques mi rutina',
+      'dejes en entrenar',
+      'dejar en entrenar',
+      'dejarla en entrenar',
+      'dejala en entrenar',
+      'ponla en entrenar',
+      'ponmela en entrenar',
+      'guardar en entrenar',
+      'guardala en entrenar',
+      'en entrenar',
+      'no aparece el boton',
+      'no aparece el botón',
+      'no veo el boton',
+      'no veo el botón',
+      'boton aplicar',
+      'botón aplicar',
+      'aplicar rutina',
+      'aplicar esta rutina',
+      'aplicar la rutina',
+      'no tengo tiempo para anotarla',
+      'no tngoo tiempo',
+      'no tengo tiempo',
+      'para anotarla',
+      'anotarla',
+      'crear mi rutina',
+      'crear rutina',
+      'generar rutina',
+      'hacer mi rutina',
+      'armar mi rutina',
+      'armar rutina',
+      'reorganizar mi rutina',
+      'reorganizar la rutina',
+      'adaptar mi rutina',
+      'rutina enfocada',
       'enfocada a',
       'enfocada en',
       'enfocado a',
@@ -481,13 +659,6 @@ class _AiChatPageState extends State<AiChatPage> {
       'más enfocada',
       'enfasis en',
       'énfasis en',
-      'reorganizar mi rutina',
-      'reorganizar la rutina',
-      'adaptar mi rutina',
-      'rutina enfocada',
-      'rutina de pecho',
-      'rutina para piernas',
-      'cambiar ejercicios',
       'poner mas pecho',
       'poner más pecho',
       'poner mas piernas',
@@ -497,18 +668,63 @@ class _AiChatPageState extends State<AiChatPage> {
       'poner mas espalda',
       'poner más espalda',
     ];
-    return triggers.any((t) => norm.contains(t));
+
+    if (directPhrases.any((p) => norm.contains(p))) return true;
+
+    final hasRoutineWord = norm.contains('rutina') ||
+        norm.contains('entrenamiento') ||
+        norm.contains('ejercicios');
+    final hasActionWord = norm.contains('modific') ||
+        norm.contains('cambi') ||
+        norm.contains('actualiz') ||
+        norm.contains('ajust') ||
+        norm.contains('cre') ||
+        norm.contains('arm') ||
+        norm.contains('dej') ||
+        norm.contains('pon') ||
+        norm.contains('aplic') ||
+        norm.contains('guard');
+
+    return hasRoutineWord && hasActionWord;
   }
 
-  List<String> _extractRequestedFocus(String text) {
-    final norm = text.toLowerCase();
+  bool _hasRoutineProposalContent(String text) {
+    final lower = text.toLowerCase();
+    final hasDays = (lower.contains('día 1') || lower.contains('dia 1')) &&
+        (lower.contains('día 2') || lower.contains('dia 2'));
+    final hasRoutineHeaders = lower.contains('rutina propuesta') ||
+        lower.contains('rutina modificada') ||
+        lower.contains('### rutina') ||
+        lower.contains('plan de entrenamiento');
+    final mentionsApply = lower.contains('botón "aplicar"') ||
+        lower.contains("botón 'aplicar'") ||
+        lower.contains('boton aplicar') ||
+        lower.contains('botón aplicar') ||
+        lower.contains('pulsar el botón') ||
+        lower.contains('presiona el botón') ||
+        lower.contains('aplicar esta rutina');
+    return (hasDays && (hasRoutineHeaders || mentionsApply || lower.contains('series'))) ||
+        (hasRoutineHeaders && mentionsApply);
+  }
+
+  List<String> _extractRequestedFocus(String text, [List<String>? extraTexts]) {
+    final combined = StringBuffer(text.toLowerCase());
+    if (extraTexts != null) {
+      for (final t in extraTexts) {
+        combined.write(' ');
+        combined.write(t.toLowerCase());
+      }
+    }
+    final norm = combined.toString();
     final result = <String>[];
     if (norm.contains('pecho') || norm.contains('pectoral')) result.add('Pecho');
     if (norm.contains('pierna') ||
         norm.contains('cuadriceps') ||
         norm.contains('cuádriceps') ||
         norm.contains('isquio') ||
-        norm.contains('femoral')) {
+        norm.contains('femoral') ||
+        norm.contains('pantorrilla') ||
+        norm.contains('gemelo')) {
       result.add('Piernas');
     }
     if (norm.contains('espalda') || norm.contains('dorsal')) result.add('Espalda');
@@ -529,6 +745,7 @@ class _AiChatPageState extends State<AiChatPage> {
     required UserProfileContext userContext,
     required WorkoutPlan? currentPlan,
     required List<String> focusMuscles,
+    String? customReply,
   }) {
     final baseProfile = userContext.trainingProfile ??
         TrainingProfile(
@@ -558,6 +775,7 @@ class _AiChatPageState extends State<AiChatPage> {
         ? focusMuscles.join(' y ')
         : effectiveProfile.goal;
 
+    final isNew = currentPlan == null;
     final newPlan = generatedPlan.copyWith(
       id: currentPlan?.id,
       version: (currentPlan?.version ?? 0) + 1,
@@ -569,11 +787,13 @@ class _AiChatPageState extends State<AiChatPage> {
           : 'Ajuste de rutina según tus preferencias',
     );
 
+    final replyText = customReply ??
+        '¡Listo! He configurado tu rutina con énfasis en $focusStr (${effectiveProfile.daysPerWeek} días, ${effectiveProfile.minutesPerSession} min/sesión). Revisa el desglose a continuación y presiona el botón "Aplicar rutina a mi plan" para dejarla guardada y lista en tu sección de Entrenar.';
+
     return AiChatResponse(
-      reply:
-          '¡Por supuesto! He reorganizado tu rutina dando mayor énfasis a $focusStr, respetando tus ${effectiveProfile.daysPerWeek} días por semana y tus ${effectiveProfile.minutesPerSession} min por sesión. Revisa la propuesta abajo y pulsa "Aplicar" para guardarla en tu entrenamiento.',
+      reply: replyText,
       action: AiWorkoutAction(
-        type: AiActionType.modifyWorkout,
+        type: isNew ? AiActionType.proposeWorkout : AiActionType.modifyWorkout,
         plan: newPlan,
         expectedVersion: currentPlan?.version ?? 0,
         expectedPlanId: currentPlan?.id,
@@ -610,7 +830,10 @@ class _AiChatPageState extends State<AiChatPage> {
       }
 
       final isChangeRequest = _isRoutineChangeRequest(text);
-      final focusMuscles = _extractRequestedFocus(text);
+      final focusMuscles = _extractRequestedFocus(
+        text,
+        messages.map((m) => m.text).toList(),
+      );
 
       final history = messages
           .take(messages.length - 1)
@@ -644,13 +867,22 @@ class _AiChatPageState extends State<AiChatPage> {
         }
       }
 
-      // Si el usuario pidió cambiar la rutina pero la respuesta de la IA remota no devolvió propuesta (sino solo texto o preguntas),
-      // generamos directamente la propuesta adaptada para que no quede con preguntas redundantes.
-      if (isChangeRequest && !reply.action.isProposal) {
+      // Si el usuario pidió cambiar la rutina o si la respuesta del asistente describe una rutina / menciona el botón Aplicar,
+      // pero la IA remota no devolvió el objeto proposal (sino solo texto),
+      // convertimos la respuesta en propuesta interactiva para que aparezca SIEMPRE el botón "Aplicar rutina a mi plan".
+      final shouldAttachProposal = isChangeRequest ||
+          _hasRoutineProposalContent(reply.reply);
+
+      if (shouldAttachProposal && !reply.action.isProposal) {
+        final allFocusMuscles = _extractRequestedFocus(
+          text,
+          messages.map((m) => m.text).toList() + [reply.reply],
+        );
         reply = _createFocusProposal(
           userContext: userContext,
           currentPlan: activeWorkout,
-          focusMuscles: focusMuscles,
+          focusMuscles: allFocusMuscles,
+          customReply: reply.reply,
         );
       }
 
