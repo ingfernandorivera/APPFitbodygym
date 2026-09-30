@@ -115,7 +115,7 @@ class _WorkoutResultPageState extends State<WorkoutResultPage> {
                                 tooltip: 'Ver video de la técnica',
                                 icon: const Icon(
                                   Icons.play_circle_fill,
-                                  color: Colors.amber,
+                                  color: AppColors.brand,
                                   size: 30,
                                 ),
                                 onPressed: () {

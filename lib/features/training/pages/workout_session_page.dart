@@ -296,21 +296,21 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF261D05),
+                color: AppColors.brand.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: const Color(0xFFFFB800).withValues(alpha: 0.6),
+                  color: AppColors.brand.withValues(alpha: 0.5),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.timer, color: Color(0xFFFFB800), size: 22),
+                  const Icon(Icons.timer, color: AppColors.brand, size: 22),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Descanso: ${_formatSeconds(remaining)}',
                       style: const TextStyle(
-                        color: Color(0xFFFFB800),
+                        color: AppColors.brand,
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                         fontFamily: 'monospace',
@@ -329,7 +329,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                       restClock.isRunning
                           ? Icons.pause_circle
                           : Icons.play_circle,
-                      color: const Color(0xFFFFB800),
+                      color: AppColors.brand,
                     ),
                     onPressed: restClock.isRunning ? pauseRest : resumeRest,
                   ),
@@ -398,7 +398,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                       child: const Text(
                         'Editar rutina',
                         style: TextStyle(
-                          color: Color(0xFFFFB800),
+                          color: AppColors.brand,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -475,7 +475,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               ],
             ),
           ),
-          // Botón fijo inferior "Finalizar entrenamiento" (Screenshot 2, 4, 5)
+          // Botón fijo inferior "Finalizar entrenamiento"
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
@@ -487,8 +487,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               height: 52,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB800),
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(26),
                   ),
@@ -587,7 +587,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                 child: Icon(
                                   Icons.fitness_center,
                                   size: 26,
-                                  color: Color(0xFFFFB800),
+                                  color: AppColors.brand,
                                 ),
                               ),
                             ),
@@ -673,7 +673,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                     Icons.play_arrow_rounded,
                     color: isCompleted
                         ? Colors.white38
-                        : const Color(0xFFFFB800),
+                        : AppColors.brand,
                     size: 28,
                   ),
                   onPressed: () => startRest(ex.restSeconds, reset: true),
@@ -797,7 +797,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                         'Ver video técnica',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFFFFB800),
+                          color: AppColors.brand,
                         ),
                       ),
                     ),

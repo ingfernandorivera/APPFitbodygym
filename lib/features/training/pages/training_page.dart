@@ -295,7 +295,7 @@ class _TrainingPageState extends State<TrainingPage> {
                       width: 44,
                       height: 3,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFB800),
+                        color: AppColors.brand,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -421,7 +421,7 @@ class _TrainingPageState extends State<TrainingPage> {
                     Icon(
                       Icons.fitness_center,
                       size: 52,
-                      color: Color(0xFFFFB800),
+                      color: AppColors.brand,
                     ),
                     SizedBox(height: 16),
                     Text(
@@ -484,7 +484,7 @@ class _TrainingPageState extends State<TrainingPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Etiqueta "En curso" para la rutina activa (Screenshot 1)
+                        // Etiqueta "En curso" para la rutina activa
                         if (isCurrentDay) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -493,13 +493,13 @@ class _TrainingPageState extends State<TrainingPage> {
                             ),
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFB800),
+                              color: AppColors.brand,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
                               'En curso',
                               style: TextStyle(
-                                color: Colors.black,
+                                color: Colors.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -508,12 +508,12 @@ class _TrainingPageState extends State<TrainingPage> {
                         ],
                         Row(
                           children: [
-                            // Badge con letra A, B, C... en dorado (Screenshot 1)
+                            // Badge con letra A, B, C... en rojo corporativo
                             Container(
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFC89314),
+                                color: AppColors.brand,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Center(

@@ -168,15 +168,19 @@ class AssessmentBody extends StatelessWidget {
     super.key,
     this.fullness = .5,
     this.representation = 'Neutral',
+    this.gender = 'Hombre',
+    this.imageAsset,
   });
 
   final double fullness;
   final String representation;
+  final String gender;
+  final String? imageAsset;
 
   @override
   Widget build(BuildContext context) => Semantics(
     image: true,
-    label: 'Silueta corporal esquemática. No representa una medición.',
+    label: 'Referencia visual corporal orientativa. No representa una medición médica.',
     child: Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
@@ -195,11 +199,52 @@ class AssessmentBody extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            height: 220,
-            width: 170,
-            child: CustomPaint(painter: _BodyPainter(fullness, representation)),
-          ),
+          if (imageAsset != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                height: 250,
+                width: 185,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111113),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.brand.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Image.asset(
+                  imageAsset!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Center(
+                    child: SizedBox(
+                      height: 220,
+                      width: 170,
+                      child: CustomPaint(
+                        painter: _BodyPainter(
+                          fullness,
+                          gender.toLowerCase() == 'mujer'
+                              ? 'Caderas amplias'
+                              : 'Hombros amplios',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 220,
+              width: 170,
+              child: CustomPaint(
+                painter: _BodyPainter(
+                  fullness,
+                  gender.toLowerCase() == 'mujer'
+                      ? 'Caderas amplias'
+                      : representation,
+                ),
+              ),
+            ),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

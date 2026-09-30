@@ -9,6 +9,7 @@ class TrainingProfile {
     required this.minutesPerSession,
     required this.preferences,
     required this.limitations,
+    this.gender = 'Hombre',
     this.weightUnit = 'kg',
     this.bodyRepresentation = 'Neutral',
     this.bodyShape = 'Sin indicar',
@@ -33,6 +34,7 @@ class TrainingProfile {
   final int minutesPerSession;
   final String preferences;
   final String limitations;
+  final String gender;
   final String weightUnit;
 
   final String bodyRepresentation;
@@ -58,6 +60,7 @@ class TrainingProfile {
     'minutesPerSession': minutesPerSession,
     'preferences': preferences,
     'limitations': limitations,
+    'gender': gender,
     'weightUnit': weightUnit,
     'schemaVersion': 2,
     'bodyRepresentation': bodyRepresentation,
@@ -85,6 +88,7 @@ class TrainingProfile {
       minutesPerSession: json['minutesPerSession'] as int,
       preferences: json['preferences'] as String? ?? '',
       limitations: json['limitations'] as String? ?? '',
+      gender: json['gender'] as String? ?? 'Hombre',
       weightUnit: json['weightUnit'] == 'lb' ? 'lb' : 'kg',
       bodyRepresentation: json['bodyRepresentation'] as String? ?? 'Neutral',
       bodyShape: json['bodyShape'] as String? ?? 'Sin indicar',
@@ -92,7 +96,7 @@ class TrainingProfile {
       targetWeightKg: (json['targetWeightKg'] as num?)?.toDouble(),
       schedule: json['schedule'] as String? ?? 'Flexible',
       trainingLocation: json['trainingLocation'] as String? ?? 'Gimnasio',
-      equipment: json['equipment'] as String? ?? 'Sin indicar',
+      equipment: json['equipment'] as String? ?? 'Gimnasio completo',
       priorityMuscles:
           (json['priorityMuscles'] as List?)?.whereType<String>().toList() ??
           const [],

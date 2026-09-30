@@ -40,6 +40,12 @@ class StepOptionMeta {
 
 const assessmentSteps = [
   AssessmentStep(
+    'gender',
+    '¿Cuál es tu sexo biológico?',
+    'Nos ayuda a calibrar referencias de composición corporal y estimaciones físicas.',
+    options: ['Hombre', 'Mujer'],
+  ),
+  AssessmentStep(
     'goal',
     '¿Qué quieres conseguir?',
     'Tu punto de partida es personal. Elige lo que más te importa ahora.',
@@ -52,13 +58,6 @@ const assessmentSteps = [
     ],
   ),
   AssessmentStep(
-    'bodyRepresentation',
-    '¿Cómo prefieres ver la silueta?',
-    'Solo cambia el dibujo. No indica género ni modifica recomendaciones.',
-    optional: true,
-    options: ['Neutral', 'Hombros amplios', 'Caderas amplias', 'Sin silueta'],
-  ),
-  AssessmentStep(
     'bodyShape',
     '¿Cómo describirías tu forma actual?',
     'Elige tu propia percepción. Todas las formas son válidas.',
@@ -67,7 +66,7 @@ const assessmentSteps = [
   AssessmentStep(
     'bodyFatEstimate',
     '¿Quieres estimar visualmente tu grasa corporal?',
-    'Es opcional y orientativa. El dibujo es esquemático: no permite medir grasa corporal, no es un diagnóstico y no se usa para calcular tu rutina.',
+    'Es opcional y orientativa. Te muestra una referencia según tu selección para calibrar tu punto de partida.',
     optional: true,
   ),
   AssessmentStep(
@@ -78,8 +77,8 @@ const assessmentSteps = [
   ),
   AssessmentStep(
     'daysPerWeek',
-    '¿Cuántos días puedes entrenar?',
-    'Elige una frecuencia que puedas sostener.',
+    '¿Cuántos días por semana puedes entrenar?',
+    'Elige una frecuencia semanal que puedas sostener.',
     options: ['1', '2', '3', '4', '5', '6', '7'],
   ),
   AssessmentStep(
@@ -93,24 +92,6 @@ const assessmentSteps = [
     '¿En qué momento prefieres entrenar?',
     'Puedes cambiarlo cuando cambie tu semana.',
     options: ['Mañana', 'Mediodía', 'Tarde', 'Noche', 'Flexible'],
-  ),
-  AssessmentStep(
-    'trainingLocation',
-    '¿Dónde vas a entrenar?',
-    'Nos ayuda a conocer tu contexto.',
-    options: ['Gimnasio', 'Casa', 'Al aire libre', 'Varios lugares'],
-  ),
-  AssessmentStep(
-    'equipment',
-    '¿Qué equipo tienes disponible?',
-    'Elige la opción que más se acerque a tu espacio.',
-    options: [
-      'Gimnasio completo',
-      'Gimnasio básico',
-      'Mancuernas y bandas',
-      'Solo peso corporal',
-      'Sin indicar',
-    ],
   ),
   AssessmentStep(
     'priorityMuscles',
@@ -222,6 +203,21 @@ const assessmentSteps = [
 
 StepOptionMeta? getStepOptionMeta(String stepKey, String option) {
   switch (stepKey) {
+    case 'gender':
+      switch (option) {
+        case 'Hombre':
+          return const StepOptionMeta(
+            label: 'Hombre',
+            subtitle: 'Referencias anatómicas y metabólicas masculinas',
+            icon: Icons.male,
+          );
+        case 'Mujer':
+          return const StepOptionMeta(
+            label: 'Mujer',
+            subtitle: 'Referencias anatómicas y de composición femenina',
+            icon: Icons.female,
+          );
+      }
     case 'goal':
       switch (option) {
         case 'Bajar grasa':
@@ -255,33 +251,6 @@ StepOptionMeta? getStepOptionMeta(String stepKey, String option) {
             subtitle:
                 'Hábito saludable sostenible, salud articular y bienestar',
             icon: Icons.directions_run,
-          );
-      }
-    case 'bodyRepresentation':
-      switch (option) {
-        case 'Neutral':
-          return const StepOptionMeta(
-            label: 'Neutral',
-            subtitle: 'Proporciones equilibradas y silueta estándar',
-            icon: Icons.accessibility_new,
-          );
-        case 'Hombros amplios':
-          return const StepOptionMeta(
-            label: 'Hombros amplios',
-            subtitle: 'Silueta con hombros y torso superior más ancho',
-            icon: Icons.straighten,
-          );
-        case 'Caderas amplias':
-          return const StepOptionMeta(
-            label: 'Caderas amplias',
-            subtitle: 'Silueta con cadera y base pélvica más acentuada',
-            icon: Icons.hourglass_bottom,
-          );
-        case 'Sin silueta':
-          return const StepOptionMeta(
-            label: 'Sin silueta',
-            subtitle: 'Ocultar la representación esquemática del cuerpo',
-            icon: Icons.visibility_off_outlined,
           );
       }
     case 'bodyShape':
@@ -547,11 +516,12 @@ StepOptionMeta? getStepOptionMeta(String stepKey, String option) {
           );
       }
     case 'daysPerWeek':
+      final count = int.tryParse(option) ?? 1;
       return StepOptionMeta(
-        label: '$option días',
-        subtitle: int.tryParse(option) != null && int.parse(option) <= 2
+        label: count == 1 ? '1 día por semana' : '$option días por semana',
+        subtitle: count <= 2
             ? 'Ideal para empezar y crear el hábito'
-            : int.tryParse(option) != null && int.parse(option) <= 4
+            : count <= 4
             ? 'Equilibrio óptimo de estímulo y descanso'
             : 'Frecuencia avanzada y alto compromiso',
         icon: Icons.event_available,
@@ -572,13 +542,13 @@ StepOptionMeta? getStepOptionMeta(String stepKey, String option) {
 
 String? getStepMilestone(int stepIndex) {
   switch (stepIndex) {
-    case 5:
+    case 4:
       return '🔥 ¡Gran comienzo! Ya entendemos mejor tu objetivo y ritmo.';
-    case 10:
+    case 9:
       return '💪 Tu constancia importa más que la perfección. Sigamos con tu entorno.';
-    case 15:
+    case 14:
       return '🛡️ Conociendo tus hábitos y descansos cuidamos tu salud y energía.';
-    case 19:
+    case 18:
       return '✨ ¡Último tramo! Tus datos físicos nos ayudan a calibrar el esfuerzo.';
     default:
       return null;

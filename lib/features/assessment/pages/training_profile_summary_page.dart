@@ -150,7 +150,97 @@ class TrainingProfileSummaryPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
+
+                // Next Step Card & Membership Status (Movido arriba según indicación 7)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.brand.withValues(
+                        alpha: membershipActive ? 0.35 : 0.25,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            membershipActive
+                                ? Icons.verified_rounded
+                                : Icons.info_outline_rounded,
+                            color: AppColors.brand,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Tu próximo paso',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        membershipActive
+                            ? 'Revisa tus respuestas y prepara tu rutina con el asistente. Si tienes molestias, consulta con un profesional antes de realizar movimientos que las agraven.'
+                            : 'Tu evaluación ya está guardada. Consulta en recepción cómo vincular o renovar tu membresía para acceder a entrenamiento, Chat IA y progreso. Puedes seguir editando tu evaluación.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textMuted,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Este resumen recoge tus respuestas. No es una valoración médica ni predice cambios físicos o fechas de resultados.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textMuted,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (membershipActive) {
+                            onOpenAiChat?.call();
+                          } else {
+                            onOpenInfo?.call();
+                          }
+                        },
+                        icon: Icon(
+                          membershipActive
+                              ? Icons.chat_bubble_outline
+                              : Icons.info_outline,
+                        ),
+                        label: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Text(
+                            membershipActive
+                                ? 'Preparar mi rutina en Chat IA'
+                                : 'Consultar información del gimnasio',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(context, true),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text('Editar evaluación'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
 
                 // Section 1: Objetivo y Motivación
                 _SummarySectionCard(
@@ -193,8 +283,6 @@ class TrainingProfileSummaryPage extends StatelessWidget {
                 _SummarySectionCard(
                   title: 'Lugar y Equipamiento',
                   icon: Icons.fitness_center_rounded,
-                  onEdit: () =>
-                      Navigator.pop(context, _stepFor('trainingLocation')),
                   items: [
                     _SummaryItem('Dónde entrenarás', profile.trainingLocation),
                     _SummaryItem('Equipamiento disponible', profile.equipment),
@@ -275,98 +363,6 @@ class TrainingProfileSummaryPage extends StatelessWidget {
                       _SummaryItem('Preferencias', profile.preferences),
                   ],
                 ),
-                const SizedBox(height: 24),
-
-                // Next Step Card & Membership Status
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: membershipActive
-                          ? AppColors.brand.withValues(alpha: 0.3)
-                          : Colors.amber.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            membershipActive
-                                ? Icons.verified_rounded
-                                : Icons.info_outline_rounded,
-                            color: membershipActive
-                                ? AppColors.brand
-                                : Colors.amber,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Tu próximo paso',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        membershipActive
-                            ? 'Revisa tus respuestas y prepara tu rutina con el asistente. Si tienes molestias, consulta con un profesional antes de realizar movimientos que las agraven.'
-                            : 'Tu evaluación ya está guardada. Consulta en recepción cómo vincular o renovar tu membresía para acceder a entrenamiento, Chat IA y progreso. Puedes seguir editando tu evaluación.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textMuted,
-                          height: 1.45,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Este resumen recoge tus respuestas. No es una valoración médica ni predice cambios físicos o fechas de resultados.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textMuted,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          if (membershipActive) {
-                            onOpenAiChat?.call();
-                          } else {
-                            onOpenInfo?.call();
-                          }
-                        },
-                        icon: Icon(
-                          membershipActive
-                              ? Icons.chat_bubble_outline
-                              : Icons.info_outline,
-                        ),
-                        label: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Text(
-                            membershipActive
-                                ? 'Preparar mi rutina en Chat IA'
-                                : 'Consultar información del gimnasio',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.pop(context, true),
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Editar evaluación'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -423,13 +419,13 @@ class _SummarySectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.items,
-    required this.onEdit,
+    this.onEdit,
   });
 
   final String title;
   final IconData icon;
   final List<_SummaryItem> items;
-  final VoidCallback onEdit;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -464,34 +460,35 @@ class _SummarySectionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                InkWell(
-                  onTap: onEdit,
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.edit_outlined,
-                          size: 14,
-                          color: AppColors.brand,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Editar',
-                          style: theme.textTheme.labelMedium?.copyWith(
+                if (onEdit != null)
+                  InkWell(
+                    onTap: onEdit,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.edit_outlined,
+                            size: 14,
                             color: AppColors.brand,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Text(
+                            'Editar',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: AppColors.brand,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

@@ -61,6 +61,9 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
       final data = profile?.toJson() ?? <String, dynamic>{};
       final initialUnit = profile?.weightUnit ?? 'kg';
       answers = {
+        'trainingLocation': 'Gimnasio',
+        'equipment': 'Gimnasio completo',
+        'bodyRepresentation': 'Neutral',
         ...data,
         'weightUnit': initialUnit,
         'weight': profile == null
@@ -73,6 +76,9 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
                 initialUnit,
               ).toStringAsFixed(1),
       };
+      if (profile != null) {
+        answers['gender'] = profile.gender;
+      }
       for (final key in [
         'age',
         'heightCm',
@@ -269,25 +275,30 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
             : weightToKg(assessmentNumber(answers['targetWeight'])!, unit),
         heightCm: assessmentNumber(answers['heightCm'])!,
         age: assessmentNumber(answers['age'])!.toInt(),
-        goal: answers['goal'] as String,
-        experience: answers['experience'] as String,
-        daysPerWeek: int.parse(answers['daysPerWeek'] as String),
-        minutesPerSession: int.parse(answers['minutesPerSession'] as String),
+        gender: answers['gender'] as String? ?? 'Hombre',
+        goal: answers['goal'] as String? ?? 'Mantenerme activo',
+        experience: answers['experience'] as String? ?? 'Principiante',
+        daysPerWeek: int.tryParse(answers['daysPerWeek']?.toString() ?? '3') ?? 3,
+        minutesPerSession:
+            int.tryParse(answers['minutesPerSession']?.toString() ?? '45') ??
+            45,
         preferences: (answers['preferences'] as String? ?? '').trim(),
         limitations: (answers['limitations'] as String? ?? '').trim(),
         weightUnit: unit,
         bodyRepresentation:
             answers['bodyRepresentation'] as String? ?? 'Neutral',
-        bodyShape: answers['bodyShape'] as String,
+        bodyShape: answers['bodyShape'] as String? ?? 'Sin indicar',
         bodyFatEstimate: (answers['bodyFatEstimate'] as num?)?.toDouble(),
-        schedule: answers['schedule'] as String,
-        trainingLocation: answers['trainingLocation'] as String,
-        equipment: answers['equipment'] as String,
+        schedule: answers['schedule'] as String? ?? 'Flexible',
+        trainingLocation:
+            answers['trainingLocation'] as String? ?? 'Gimnasio',
+        equipment:
+            answers['equipment'] as String? ?? 'Gimnasio completo',
         priorityMuscles: List<String>.from(
           answers['priorityMuscles'] as List? ?? [],
         ),
         motivations: List<String>.from(answers['motivations'] as List? ?? []),
-        dailyActivity: answers['dailyActivity'] as String,
+        dailyActivity: answers['dailyActivity'] as String? ?? 'Sin indicar',
         sleepHours: assessmentNumber(answers['sleepHours']),
         hydrationLiters: assessmentNumber(answers['hydrationLiters']),
       );
@@ -343,26 +354,14 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
       }
       return Column(
         children: [
-          if ((current.key == 'bodyRepresentation' ||
-                  current.key == 'bodyShape') &&
-              answers['bodyRepresentation'] != 'Sin silueta')
-            AssessmentBody(
-              representation:
-                  answers['bodyRepresentation'] as String? ?? 'Neutral',
-              fullness: current.key != 'bodyShape'
-                  ? .5
-                  : saved == 'Delgada'
-                  ? .1
-                  : saved == 'Robusta'
-                  ? .9
-                  : .5,
-            ),
           for (final option in options) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AssessmentChoice(
                 label: current.key == 'daysPerWeek'
-                    ? '$option días'
+                    ? (option == '1'
+                        ? '1 día por semana'
+                        : '$option días por semana')
                     : current.key == 'minutesPerSession'
                     ? '$option minutos'
                     : option,
@@ -380,14 +379,16 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
     }
     if (current.key == 'bodyFatEstimate') {
       final estimate = (answers[current.key] as num?)?.toDouble();
+      final gender = answers['gender'] as String? ?? 'Hombre';
+      final currentEstimate = estimate ?? 25.0;
+      final asset = bodyFatAssetPath(gender, currentEstimate);
       return Column(
         children: [
-          if (answers['bodyRepresentation'] != 'Sin silueta')
-            AssessmentBody(
-              fullness: ((estimate ?? 28) - 8) / 47,
-              representation:
-                  answers['bodyRepresentation'] as String? ?? 'Neutral',
-            ),
+          AssessmentBody(
+            fullness: ((currentEstimate - 8) / 47).clamp(0.0, 1.0),
+            gender: gender,
+            imageAsset: asset,
+          ),
           Card(
             color: AppColors.surface,
             shape: RoundedRectangleBorder(

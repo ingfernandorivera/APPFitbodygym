@@ -151,12 +151,10 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                   return ChoiceChip(
                     label: Text('${s}s (${_formatRest(s)})'),
                     selected: isSelected,
-                    selectedColor: const Color(0xFFFFB800),
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.black : Colors.white,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+                    selectedColor: AppColors.brand,
+                    labelStyle: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                     backgroundColor: const Color(0xFF2A2A2E),
                     onSelected: (val) {
@@ -232,7 +230,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                             const Icon(
                               Icons.fitness_center_rounded,
                               size: 56,
-                              color: Color(0xFFFFB800),
+                              color: AppColors.brand,
                             ),
                             const SizedBox(height: 12),
                             Text(
@@ -413,7 +411,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                   tooltip: 'Iniciar descanso',
                   icon: const Icon(
                     Icons.play_arrow_rounded,
-                    color: Color(0xFFFFB800),
+                    color: AppColors.brand,
                     size: 32,
                   ),
                   onPressed: () {
@@ -448,7 +446,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                     Icon(
                       Icons.info_outline,
                       size: 18,
-                      color: Color(0xFFFFB800),
+                      color: AppColors.brand,
                     ),
                     SizedBox(width: 8),
                     Text(
@@ -588,7 +586,7 @@ class _EditSeriesRepsSheetState extends State<_EditSeriesRepsSheet> {
                 IconButton(
                   onPressed: _sets > 1 ? () => setState(() => _sets--) : null,
                   icon: const Icon(Icons.remove_circle_outline),
-                  color: const Color(0xFFFFB800),
+                  color: AppColors.brand,
                 ),
                 Text(
                   '$_sets',
@@ -601,7 +599,7 @@ class _EditSeriesRepsSheetState extends State<_EditSeriesRepsSheet> {
                 IconButton(
                   onPressed: _sets < 8 ? () => setState(() => _sets++) : null,
                   icon: const Icon(Icons.add_circle_outline),
-                  color: const Color(0xFFFFB800),
+                  color: AppColors.brand,
                 ),
               ],
             ),
@@ -632,8 +630,8 @@ class _EditSeriesRepsSheetState extends State<_EditSeriesRepsSheet> {
               height: 48,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB800),
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
@@ -738,7 +736,7 @@ class _EditWeightSheetState extends State<_EditWeightSheet> {
                 hintStyle: const TextStyle(color: Colors.white38),
                 suffixText: 'kg',
                 suffixStyle: const TextStyle(
-                  color: Color(0xFFFFB800),
+                  color: AppColors.brand,
                   fontWeight: FontWeight.bold,
                 ),
                 filled: true,
@@ -785,8 +783,8 @@ class _EditWeightSheetState extends State<_EditWeightSheet> {
               height: 48,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB800),
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),

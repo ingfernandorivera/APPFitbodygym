@@ -37,15 +37,13 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 }
 
 Map<String, dynamic> completeAnswers() => {
+  'gender': 'Hombre',
   'goal': 'Aumentar fuerza',
-  'bodyRepresentation': 'Neutral',
   'bodyShape': 'Intermedia',
   'experience': 'Principiante',
   'daysPerWeek': '3',
   'minutesPerSession': '45',
   'schedule': 'Tarde',
-  'trainingLocation': 'Casa',
-  'equipment': 'Mancuernas y bandas',
   'priorityMuscles': ['Espalda', 'Piernas'],
   'limitations': '',
   'motivations': ['Crear un hábito'],
@@ -69,18 +67,18 @@ void main() {
     await tester.pumpAndSettle();
     await tapVisible(tester, find.text('Continuar'));
     expect(find.text('Selecciona una opción para continuar.'), findsOneWidget);
-    await tapVisible(tester, find.text('Aumentar fuerza'));
+    await tapVisible(tester, find.text('Hombre'));
     await tapVisible(tester, find.text('Continuar'));
-    expect(find.text('¿Cómo prefieres ver la silueta?'), findsOneWidget);
+    expect(find.text('¿Qué quieres conseguir?'), findsOneWidget);
     expect((await store.loadDraft())!['step'], 1);
     await tester.pumpWidget(const SizedBox());
     await tester.pumpWidget(app(TrainingAssessmentPage(store: store)));
     await tester.pumpAndSettle();
-    expect(find.text('¿Cómo prefieres ver la silueta?'), findsOneWidget);
-    await tapVisible(tester, find.text('Atrás'));
     expect(find.text('¿Qué quieres conseguir?'), findsOneWidget);
+    await tapVisible(tester, find.text('Atrás'));
+    expect(find.text('¿Cuál es tu sexo biológico?'), findsOneWidget);
     final choice = tester.widget<AssessmentChoice>(
-      find.widgetWithText(AssessmentChoice, 'Aumentar fuerza'),
+      find.widgetWithText(AssessmentChoice, 'Hombre'),
     );
     expect(choice.selected, isTrue);
     expect(await store.load(), isNull);
