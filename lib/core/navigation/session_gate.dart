@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,6 +27,7 @@ class _SessionGateState extends State<SessionGate> {
   @override
   void initState() {
     super.initState();
+    _checkInitialRecovery();
     if (SupabaseConfig.isConfigured) {
       Supabase.instance.client.auth.onAuthStateChange.listen((authState) {
         if (!mounted) return;
@@ -35,6 +37,19 @@ class _SessionGateState extends State<SessionGate> {
           setState(() => recoveringPassword = false);
         }
       });
+    }
+  }
+
+  void _checkInitialRecovery() {
+    if (kIsWeb) {
+      try {
+        final uri = Uri.base;
+        final type = uri.queryParameters['type'];
+        final fragment = uri.fragment;
+        if (type == 'recovery' || fragment.contains('type=recovery')) {
+          recoveringPassword = true;
+        }
+      } catch (_) {}
     }
   }
 
@@ -50,8 +65,8 @@ class _SessionGateState extends State<SessionGate> {
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, _) {
         final session = Supabase.instance.client.auth.currentSession;
-        if (session == null) return const LoginScreen();
         if (recoveringPassword) return const CreatePasswordScreen();
+        if (session == null) return const LoginScreen();
         final passwordCreated =
             session.user.userMetadata?['password_created'] == true;
         return passwordCreated
