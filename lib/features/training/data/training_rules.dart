@@ -43,7 +43,9 @@ bool allowedExercise(WorkoutExercise e, TrainingProfile profile) {
       ['vertical_push', 'shoulder_abduction'].contains(e.movementPattern)) {
     return false;
   }
-  if ((limitations.contains('lumbar') || limitations.contains('espalda')) &&
+  if ((limitations.contains('lumbar') ||
+          limitations.contains('espalda') ||
+          limitations.contains('columna')) &&
       e.movementPattern == 'hinge') {
     return false;
   }

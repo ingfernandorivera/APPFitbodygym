@@ -412,6 +412,30 @@ class _AiChatPageState extends State<AiChatPage> {
       }
 
       // Espalda
+      if ((norm.contains('dominada') || norm.contains('pull up') || norm.contains('pull-up')) && e.id == 'pull_ups') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('inclinado') && (norm.contains('remo') || norm.contains('mancuerna')) && e.id == 'incline_bench_dumbbell_row') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('barra t') || norm.contains('remo en t') || norm.contains('remo t')) && e.id == 't_bar_row') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('polea baja') && e.id == 'low_pulley_row') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('pullover') || norm.contains('pull-over') || norm.contains('pull over')) && e.id == 'dumbbell_pullover') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('superman') || norm.contains('hiperextension') || norm.contains('lumbar')) && e.id == 'superman_extension') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('plancha') || norm.contains('plank')) && e.id == 'plank_hold') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('remo') && norm.contains('mancuerna') && e.id == 'dumbbell_row') {
+        bestMatch = e; break;
+      }
       if (norm.contains('jalon') && e.id == 'lat_pulldown') {
         bestMatch = e; break;
       }
@@ -488,6 +512,7 @@ class _AiChatPageState extends State<AiChatPage> {
     required String planName,
     required String goal,
     required int daysCount,
+    TrainingProfile? profile,
   }) {
     final lines = text.split('\n');
     final parsedDays = <WorkoutDay>[];
@@ -548,18 +573,43 @@ class _AiChatPageState extends State<AiChatPage> {
         }
 
         var exercise = _matchExercise(rawName, sets, minReps, maxReps);
-        if (exercise == null) {
-          final fallbackMuscle = goal.toLowerCase();
+
+        // Si el ejercicio sugerido por la IA está prohibido por las limitaciones/equipo del usuario,
+        // lo reemplazamos automáticamente por un ejercicio seguro compatible del catálogo
+        if (exercise != null && profile != null && !allowedExercise(exercise, profile)) {
+          final targetMuscleNorm = normalized(exercise.muscleGroup);
           exercise = ExerciseCatalog.exercises.firstWhere(
             (e) => !currentDayExercises.any((ce) => ce.stableId == e.stableId) &&
-                (fallbackMuscle.contains('pecho')
-                    ? (e.primaryMuscles.contains('Pecho') || e.muscleGroup.toLowerCase().contains('pecho'))
-                    : true),
-            orElse: () => ExerciseCatalog.exercises.first,
+                allowedExercise(e, profile) &&
+                (normalized(e.muscleGroup).contains(targetMuscleNorm) ||
+                    e.primaryMuscles.any((p) => normalized(p).contains(targetMuscleNorm))),
+            orElse: () => ExerciseCatalog.exercises.firstWhere(
+              (e) => !currentDayExercises.any((ce) => ce.stableId == e.stableId) &&
+                  allowedExercise(e, profile),
+              orElse: () => exercise!,
+            ),
           ).copyWith(sets: sets, targetMin: minReps, targetMax: maxReps);
         }
 
-        if (!currentDayExercises.any((e) => e.stableId == exercise!.stableId)) {
+        // Si no se reconoció el ejercicio, buscar en el catálogo uno compatible con el músculo del día
+        if (exercise == null) {
+          final dayFocusNorm = normalized(currentDayTitle.isNotEmpty ? currentDayTitle : goal);
+          final candidates = ExerciseCatalog.exercises.where((e) {
+            if (currentDayExercises.any((ce) => ce.stableId == e.stableId)) return false;
+            if (profile != null && !allowedExercise(e, profile)) return false;
+            return normalized(e.muscleGroup).contains(dayFocusNorm) ||
+                e.primaryMuscles.any((p) => normalized(p).contains(dayFocusNorm));
+          }).toList();
+
+          if (candidates.isNotEmpty) {
+            exercise = candidates.first.copyWith(sets: sets, targetMin: minReps, targetMax: maxReps);
+          }
+        }
+
+        // Solo añadir si es un ejercicio válido y no excede 4-5 por sesión (para respetar duración)
+        if (exercise != null &&
+            currentDayExercises.length < 5 &&
+            !currentDayExercises.any((e) => e.stableId == exercise!.stableId)) {
           currentDayExercises.add(exercise);
         }
       }
@@ -1250,6 +1300,7 @@ class _AiChatPageState extends State<AiChatPage> {
         planName: planName,
         goal: focusStr,
         daysCount: effectiveDays,
+        profile: effectiveProfile,
       );
     }
 
