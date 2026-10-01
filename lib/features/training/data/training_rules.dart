@@ -46,7 +46,17 @@ bool allowedExercise(WorkoutExercise e, TrainingProfile profile) {
   if ((limitations.contains('lumbar') ||
           limitations.contains('espalda') ||
           limitations.contains('columna')) &&
-      e.movementPattern == 'hinge') {
+      (e.movementPattern == 'hinge' ||
+          e.movementPattern == 'hinge_pull' ||
+          e.id == 'squat_barbell' ||
+          e.id == 'front_squat_barbell' ||
+          e.id == 'sumo_squat_barbell' ||
+          e.id == 'barbell_split_squat' ||
+          e.id == 'barbell_row' ||
+          e.id == 'good_mornings_barbell' ||
+          e.id == 'rack_pull' ||
+          e.id == 'deadlift_conventional' ||
+          e.id == 'deadlift_sumo')) {
     return false;
   }
   final equipment = normalized(profile.equipment);

@@ -344,10 +344,33 @@ class _AiChatPageState extends State<AiChatPage> {
         .replaceAll('/', ' ')
         .trim();
 
-    // 1. Coincidencia directa por nombre
+    final stripped = norm.replaceFirst(RegExp(r'^\d+[\.\)\s-]+\s*'), '').trim();
+    final numMatch = RegExp(r'^(\d+)[\.\)\s]').firstMatch(rawName.trim());
+    final exNum = numMatch != null ? int.tryParse(numMatch.group(1)!) : null;
+
+    // 0. Si viene con número de ejercicio oficial (1 a 96):
+    if (exNum != null && exNum >= 1 && exNum <= 96) {
+      final prefix = 'ex_${exNum.toString().padLeft(3, '0')}_';
+      for (final e in ExerciseCatalog.exercises) {
+        if (e.catalogId?.startsWith(prefix) == true) {
+          return e.copyWith(
+            sets: sets,
+            targetMin: minReps,
+            targetMax: maxReps,
+          );
+        }
+      }
+    }
+
+    // 1. Coincidencia directa por nombre (o nombre sin prefijo numérico)
     for (final e in ExerciseCatalog.exercises) {
       final eNorm = normalized(e.name);
-      if (norm == eNorm || norm.contains(eNorm) || eNorm.contains(norm)) {
+      if (norm == eNorm ||
+          stripped == eNorm ||
+          norm.contains(eNorm) ||
+          stripped.contains(eNorm) ||
+          eNorm.contains(stripped) ||
+          eNorm.contains(norm)) {
         return e.copyWith(
           sets: sets,
           targetMin: minReps,
@@ -356,11 +379,19 @@ class _AiChatPageState extends State<AiChatPage> {
       }
     }
 
-    // 2. Coincidencia por palabras clave
+    // 2. Coincidencia por palabras clave avanzadas para el catálogo de 96 ejercicios
     WorkoutExercise? bestMatch;
     for (final e in ExerciseCatalog.exercises) {
-      // Pecho
+      // Pecho (1-14, 96)
+      if (norm.contains('belt squat') || norm.contains('sentadilla cinturon') || norm.contains('sentadilla con cinturon')) {
+        if (norm.contains('sumo') && e.id == 'belt_squat_sumo') { bestMatch = e; break; }
+        if (norm.contains('talon') && e.id == 'belt_squat_calf_raise') { bestMatch = e; break; }
+        if (e.id == 'belt_squat') { bestMatch = e; break; }
+      }
       if (norm.contains('plano') && (norm.contains('barra') || norm.contains('banca')) && e.id == 'bench_press_barbell') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('inclinado') && norm.contains('cerrado') && e.id == 'close_grip_incline_bench_press') {
         bestMatch = e; break;
       }
       if (norm.contains('inclinado') && norm.contains('mancuerna') && e.id == 'incline_dumbbell_press') {
@@ -369,7 +400,7 @@ class _AiChatPageState extends State<AiChatPage> {
       if (norm.contains('inclinado') && norm.contains('barra') && e.id == 'incline_barbell_press') {
         bestMatch = e; break;
       }
-      if (norm.contains('inclinado') && (norm.contains('maquina') || norm.contains('pecho')) && e.id == 'incline_chest_machine') {
+      if (norm.contains('inclinado') && (norm.contains('maquina') || norm.contains('discos') || norm.contains('pecho')) && e.id == 'incline_chest_machine') {
         bestMatch = e; break;
       }
       if (norm.contains('apertura') && (norm.contains('inclinad') || norm.contains('superior')) && e.id == 'incline_dumbbell_flyes') {
@@ -381,7 +412,15 @@ class _AiChatPageState extends State<AiChatPage> {
       if ((norm.contains('peck') || norm.contains('pec-deck') || norm.contains('contractor')) && e.id == 'pec_deck') {
         bestMatch = e; break;
       }
-      if ((norm.contains('fondo') || norm.contains('dip')) && (norm.contains('paralela') || norm.contains('pecho')) && e.id == 'parallel_dips') {
+      if (norm.contains('cruce') && norm.contains('polea')) {
+        if (norm.contains('alto a bajo') && e.id == 'cable_crossover_high_to_low') { bestMatch = e; break; }
+        if (norm.contains('bajo a alto') && e.id == 'cable_crossover_low_to_high') { bestMatch = e; break; }
+        if (e.id == 'cable_crossover_mid') { bestMatch = e; break; }
+      }
+      if (norm.contains('pie') && norm.contains('polea') && (norm.contains('pecho') || norm.contains('press')) && e.id == 'standing_cable_chest_press') {
+        bestMatch = e; break;
+      }
+      if ((norm.contains('fondo') || norm.contains('dip')) && (norm.contains('asistid') || norm.contains('paralela')) && (e.id == 'assisted_dip' || e.id == 'parallel_dips')) {
         bestMatch = e; break;
       }
       if (norm.contains('cerrado') && e.id == 'close_grip_bench_press') {
@@ -390,29 +429,30 @@ class _AiChatPageState extends State<AiChatPage> {
       if (norm.contains('declinado') && e.id == 'decline_dumbbell_press') {
         bestMatch = e; break;
       }
-      if ((norm.contains('flexion') || norm.contains('lagartija') || norm.contains('push')) &&
-          (norm.contains('elevad') || norm.contains('pies')) && e.id == 'elevated_push_ups') {
-        bestMatch = e; break;
-      }
-      if ((norm.contains('flexion') || norm.contains('lagartija') || norm.contains('push')) &&
-          (norm.contains('diamante') || norm.contains('juntas')) && e.id == 'diamond_push_ups') {
-        bestMatch = e; break;
-      }
-      if (norm.contains('cruce') && norm.contains('polea') && e.id == 'pec_deck') {
-        bestMatch = e; break;
-      }
-      if ((norm.contains('press') || norm.contains('empuje')) && (norm.contains('maquina') || norm.contains('guiada')) && e.id == 'chest_press_machine') {
+      if ((norm.contains('press') || norm.contains('empuje')) && (norm.contains('maquina') || norm.contains('guiada')) && e.id == 'incline_chest_machine') {
         bestMatch = e; break;
       }
       if (norm.contains('press de banca') && e.id == 'bench_press_barbell') {
         bestMatch = e; break;
       }
-      if (norm.contains('press de pecho') && e.id == 'chest_press_machine') {
+      if (norm.contains('press de pecho') && e.id == 'standing_cable_chest_press') {
         bestMatch = e; break;
       }
 
-      // Espalda
-      if ((norm.contains('dominada') || norm.contains('pull up') || norm.contains('pull-up')) && e.id == 'pull_ups') {
+      // Espalda y deltoides posteriores (15-28, 95)
+      if (norm.contains('descenso escapular') && e.id == 'assisted_scapular_depression') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('dominada') || norm.contains('pull up') || norm.contains('pull-up')) {
+        if (norm.contains('supin') && e.id == 'assisted_pull_up_underhand') { bestMatch = e; break; }
+        if (norm.contains('neutr') && e.id == 'assisted_pull_up_neutral') { bestMatch = e; break; }
+        if (norm.contains('asistid') || norm.contains('pronad')) {
+          bestMatch = e.id == 'assisted_pull_up_overhand' ? e : (e.id == 'pull_ups' ? e : bestMatch);
+          if (bestMatch != null) break;
+        }
+        if (e.id == 'pull_ups') { bestMatch = e; break; }
+      }
+      if (norm.contains('remo') && norm.contains('invertido') && e.id == 'inverted_row_smith') {
         bestMatch = e; break;
       }
       if (norm.contains('inclinado') && (norm.contains('remo') || norm.contains('mancuerna')) && e.id == 'incline_bench_dumbbell_row') {
@@ -421,23 +461,24 @@ class _AiChatPageState extends State<AiChatPage> {
       if ((norm.contains('barra t') || norm.contains('remo en t') || norm.contains('remo t')) && e.id == 't_bar_row') {
         bestMatch = e; break;
       }
-      if (norm.contains('polea baja') && e.id == 'low_pulley_row') {
+      if (norm.contains('unilateral') && norm.contains('polea') && e.id == 'cable_row_unilateral') {
         bestMatch = e; break;
       }
-      if ((norm.contains('pullover') || norm.contains('pull-over') || norm.contains('pull over')) && e.id == 'dumbbell_pullover') {
+      if (norm.contains('polea baja') && (e.id == 'low_pulley_row' || e.id == 'seated_row')) {
         bestMatch = e; break;
       }
-      if ((norm.contains('superman') || norm.contains('hiperextension') || norm.contains('lumbar')) && e.id == 'superman_extension') {
-        bestMatch = e; break;
+      if ((norm.contains('pullover') || norm.contains('pull-over') || norm.contains('pull over'))) {
+        if (norm.contains('polea') && e.id == 'cable_straight_arm_pullover') { bestMatch = e; break; }
+        if (e.id == 'dumbbell_pullover') { bestMatch = e; break; }
       }
-      if ((norm.contains('plancha') || norm.contains('plank')) && e.id == 'plank_hold') {
-        bestMatch = e; break;
+      if (norm.contains('apertura inversa')) {
+        if (norm.contains('crossover') && e.id == 'reverse_cable_crossover') { bestMatch = e; break; }
+        if (e.id == 'reverse_pec_deck') { bestMatch = e; break; }
       }
-      if (norm.contains('remo') && norm.contains('mancuerna') && e.id == 'dumbbell_row') {
-        bestMatch = e; break;
-      }
-      if (norm.contains('jalon') && e.id == 'lat_pulldown') {
-        bestMatch = e; break;
+      if (norm.contains('jalon') || norm.contains('jalón')) {
+        if (norm.contains('neutr') && e.id == 'lat_pulldown_close_neutral') { bestMatch = e; break; }
+        if (norm.contains('supin') && e.id == 'lat_pulldown_underhand') { bestMatch = e; break; }
+        if (e.id == 'lat_pulldown') { bestMatch = e; break; }
       }
       if (norm.contains('remo') && norm.contains('barra') && e.id == 'barbell_row') {
         bestMatch = e; break;
@@ -445,38 +486,131 @@ class _AiChatPageState extends State<AiChatPage> {
       if (norm.contains('remo') && (norm.contains('maquina') || norm.contains('sentado')) && e.id == 'seated_row') {
         bestMatch = e; break;
       }
-
-      // Piernas
-      if (norm.contains('sentadilla') && norm.contains('barra') && e.id == 'squat_barbell') {
-        bestMatch = e; break;
-      }
-      if (norm.contains('sentadilla') && e.id == 'goblet_squat') {
-        bestMatch = e; break;
-      }
-      if (norm.contains('prensa') && e.id == 'leg_press') {
-        bestMatch = e; break;
-      }
-      if ((norm.contains('pantorrilla') || norm.contains('gemelo')) && e.id == 'calf_raise') {
-        bestMatch = e; break;
-      }
-      if ((norm.contains('femoral') || norm.contains('isquio')) && e.id == 'leg_curl') {
-        bestMatch = e; break;
-      }
-      if (norm.contains('peso muerto') && e.id == 'romanian_deadlift_barbell') {
+      if (norm.contains('remo') && norm.contains('mancuerna') && e.id == 'dumbbell_row') {
         bestMatch = e; break;
       }
 
-      // Brazos y hombros
-      if (norm.contains('curl') && (norm.contains('barra') || norm.contains('biceps') || norm.contains('bíceps')) && e.id == 'bicep_curl_barbell') {
+      // Piernas (49-72, 87, 88, 90, 93)
+      if (norm.contains('prensa')) {
+        if (norm.contains('alta') && e.id == 'leg_press_high_feet') { bestMatch = e; break; }
+        if (norm.contains('amplia') && e.id == 'leg_press_wide_stance') { bestMatch = e; break; }
+        if (norm.contains('baja') && e.id == 'leg_press_low_feet') { bestMatch = e; break; }
+        if (norm.contains('talon') && e.id == 'calf_raise') { bestMatch = e; break; }
+        if (e.id == 'leg_press') { bestMatch = e; break; }
+      }
+      if (norm.contains('hip thrust') && e.id == 'hip_thrust_smith') {
         bestMatch = e; break;
       }
-      if (norm.contains('extension') && (norm.contains('triceps') || norm.contains('tríceps')) && e.id == 'tricep_extension_dumbbell') {
+      if (norm.contains('puente') && norm.contains('smith') && e.id == 'glute_bridge_smith') {
         bestMatch = e; break;
+      }
+      if (norm.contains('patada') && (norm.contains('gluteo') || norm.contains('polea')) && e.id == 'cable_glute_kickback') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('extension') && norm.contains('gluteo') && e.id == 'glute_extension_machine') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('abduccion') || norm.contains('abducción')) {
+        if (norm.contains('polea') && e.id == 'cable_hip_abduction') { bestMatch = e; break; }
+        if (e.id == 'seated_hip_abduction_machine') { bestMatch = e; break; }
+      }
+      if (norm.contains('aduccion') || norm.contains('aducción') && e.id == 'cable_hip_adduction') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('extension') && (norm.contains('cuadriceps') || norm.contains('pierna'))) {
+        if (norm.contains('unilateral') && e.id == 'leg_extension_unilateral') { bestMatch = e; break; }
+        if (e.id == 'leg_extension_bilateral') { bestMatch = e; break; }
+      }
+      if (norm.contains('bulgara') && e.id == 'bulgarian_split_squat_smith') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('split squat') && e.id == 'barbell_split_squat') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('zancada') && e.id == 'dumbbell_lunge') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('pantorrilla') || norm.contains('gemelo') || norm.contains('talon') || norm.contains('talones')) {
+        if (norm.contains('smith') && e.id == 'standing_calf_raise_smith') { bestMatch = e; break; }
+        if (e.id == 'calf_raise') { bestMatch = e; break; }
+      }
+      if (norm.contains('femoral') || norm.contains('isquio')) {
+        if (e.id == 'leg_curl') { bestMatch = e; break; }
+      }
+      if (norm.contains('peso muerto') || norm.contains('deadlift')) {
+        if (norm.contains('rumano') && (norm.contains('mancuerna') || norm.contains('manc')) && e.id == 'dumbbell_rdl') { bestMatch = e; break; }
+        if (norm.contains('rumano') && e.id == 'romanian_deadlift_barbell') { bestMatch = e; break; }
+        if (norm.contains('sumo') && e.id == 'deadlift_sumo') { bestMatch = e; break; }
+        if (e.id == 'deadlift_conventional') { bestMatch = e; break; }
+      }
+
+      // Brazos y Hombros (29-48, 89)
+      if (norm.contains('predicador')) {
+        if (norm.contains('unilateral') && e.id == 'preacher_curl_unilateral_machine') { bestMatch = e; break; }
+        if (e.id == 'preacher_curl_machine') { bestMatch = e; break; }
+      }
+      if (norm.contains('martillo')) {
+        if (norm.contains('polea') && e.id == 'cable_hammer_curl') { bestMatch = e; break; }
+        if (e.id == 'hammer_curl_dumbbell') { bestMatch = e; break; }
+      }
+      if (norm.contains('curl') && norm.contains('polea') && e.id == 'low_pulley_bicep_curl') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('curl') && norm.contains('mancuerna') && e.id == 'dumbbell_curl') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('curl') && norm.contains('barra') && (e.id == 'bicep_curl_short_bar' || e.id == 'bicep_curl_barbell')) {
+        bestMatch = e; break;
+      }
+      if (norm.contains('triceps') || norm.contains('tríceps')) {
+        if (norm.contains('cuerda') && norm.contains('cabeza') && e.id == 'overhead_cable_tricep_extension') { bestMatch = e; break; }
+        if (norm.contains('cuerda') && e.id == 'rope_tricep_pushdown') { bestMatch = e; break; }
+        if (norm.contains('barra') && e.id == 'bar_tricep_pushdown') { bestMatch = e; break; }
+        if (norm.contains('unilateral') && e.id == 'unilateral_tricep_extension_machine') { bestMatch = e; break; }
+        if (norm.contains('maquina') && e.id == 'tricep_extension_machine') { bestMatch = e; break; }
+      }
+      if (norm.contains('militar')) {
+        if (norm.contains('smith') && e.id == 'military_press_smith') { bestMatch = e; break; }
+        if (e.id == 'military_press') { bestMatch = e; break; }
+      }
+      if (norm.contains('hombro') && norm.contains('mancuerna') && (norm.contains('press') || norm.contains('sentado')) && e.id == 'dumbbell_shoulder_press') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('lateral')) {
+        if (norm.contains('polea') && e.id == 'cable_lateral_raise') { bestMatch = e; break; }
+        if (e.id == 'lateral_raise') { bestMatch = e; break; }
+      }
+      if (norm.contains('frontal') && e.id == 'cable_front_raise') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('encogimiento') || norm.contains('trapecio') || norm.contains('shrug')) {
+        if (norm.contains('polea') && e.id == 'cable_shrugs') { bestMatch = e; break; }
+        if (e.id == 'dumbbell_shrugs') { bestMatch = e; break; }
       }
       if (norm.contains('face pull') && e.id == 'face_pull') {
         bestMatch = e; break;
       }
-      if (norm.contains('militar') && e.id == 'military_press') {
+
+      // Abdomen y Core (75-80, 94)
+      if (norm.contains('crunch')) {
+        if (norm.contains('polea') && e.id == 'kneeling_cable_crunch') { bestMatch = e; break; }
+        if (e.id == 'machine_crunch') { bestMatch = e; break; }
+      }
+      if (norm.contains('pallof') && e.id == 'pallof_press') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('woodchop') && e.id == 'cable_woodchop') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('hiperextension') || norm.contains('hiperextensión')) {
+        if (norm.contains('isometric') && e.id == 'hyperextension_isometric_hold') { bestMatch = e; break; }
+        if (norm.contains('cadera') && e.id == 'hyperextension_hip_extension') { bestMatch = e; break; }
+        if (e.id == 'hyperextension_45') { bestMatch = e; break; }
+      }
+      if (norm.contains('plancha') && e.id == 'plank_hold') {
+        bestMatch = e; break;
+      }
+      if (norm.contains('superman') && e.id == 'superman_extension') {
         bestMatch = e; break;
       }
     }
@@ -548,8 +682,14 @@ class _AiChatPageState extends State<AiChatPage> {
         continue;
       }
 
-      if (currentDayNum > 0 && (line.startsWith('-') || line.startsWith('*') || line.startsWith('•'))) {
-        final cleaned = line.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim();
+      final isExerciseLine = currentDayNum > 0 &&
+          (line.startsWith('-') ||
+              line.startsWith('*') ||
+              line.startsWith('•') ||
+              RegExp(r'^\d+[\.\)]\s+').hasMatch(line));
+
+      if (isExerciseLine) {
+        final cleaned = line.replaceFirst(RegExp(r'^([-*•]|\d+[\.\)])\s*'), '').trim();
         final parts = cleaned.split(RegExp(r'[:–—-]'));
         final rawName = parts[0].replaceAll('*', '').trim();
 
