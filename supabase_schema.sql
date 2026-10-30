@@ -7,6 +7,8 @@ create table if not exists public.member_profiles (
   membership_active boolean not null default false,
   membership_start date,
   membership_end date,
+  app_access_status text not null default 'not_enabled',
+  app_access_expires_at timestamptz,
   synced_at timestamptz not null default now()
 );
 

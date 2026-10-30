@@ -22,6 +22,8 @@ type ChatMessage = {
 type MemberProfile = {
   membership_active?: boolean | null;
   membership_end?: string | null;
+  app_access_status?: string | null;
+  app_access_expires_at?: string | null;
 };
 
 function validHistory(value: unknown): ChatMessage[] {
@@ -105,19 +107,14 @@ function todayInElSalvador(): string {
   return `${year}-${month}-${day}`;
 }
 
-function hasActiveMembership(profile: MemberProfile): boolean {
-  if (profile.membership_active !== true) {
-    return false;
-  }
-
-  if (!profile.membership_end) {
-    return false;
-  }
-
-  const membershipEnd = profile.membership_end.slice(0, 10);
+function hasAppAccess(profile: MemberProfile): boolean {
   const today = todayInElSalvador();
-
-  return membershipEnd >= today;
+  if (profile.app_access_status === "revoked") return false;
+  const membershipAllowed = profile.membership_active === true &&
+    Boolean(profile.membership_end) && profile.membership_end!.slice(0, 10) >= today;
+  const manualAllowed = profile.app_access_status === "active" &&
+    Boolean(profile.app_access_expires_at) && profile.app_access_expires_at!.slice(0, 10) >= today;
+  return membershipAllowed || manualAllowed;
 }
 
 function formatWorkoutSummary(workout: unknown): string {
@@ -218,7 +215,7 @@ Deno.serve(async (request) => {
    * 2. VERIFICAR MEMBRESÍA
    */
   const profileUrl = new URL(`${supabaseUrl}/rest/v1/member_profiles`);
-  profileUrl.searchParams.set("select", "membership_active,membership_end");
+  profileUrl.searchParams.set("select", "membership_active,membership_end,app_access_status,app_access_expires_at");
   profileUrl.searchParams.set("auth_user_id", `eq.${userId}`);
   profileUrl.searchParams.set("limit", "1");
 
@@ -249,7 +246,7 @@ Deno.serve(async (request) => {
 
   const memberProfile = profiles[0];
 
-  if (!hasActiveMembership(memberProfile)) {
+  if (!hasAppAccess(memberProfile)) {
     return json(
       { error: "Necesitas una membresía activa para usar el asistente de Fit Body Gym." },
       403,
