@@ -7,23 +7,26 @@ class MembershipStatusCard extends StatelessWidget {
     required this.end,
     required this.days,
     required this.active,
+    this.authorized = false,
   }) : message = null;
 
   const MembershipStatusCard.error(this.message, {super.key})
     : name = '',
       end = null,
       days = -1,
-      active = false;
+      active = false,
+      authorized = false;
 
   final String name;
   final DateTime? end;
   final int days;
   final bool active;
+  final bool authorized;
   final String? message;
 
   @override
   Widget build(BuildContext context) {
-    final warning = active && days <= 7;
+    final warning = active && !authorized && days <= 7;
     final color = message != null || !active
         ? Colors.redAccent
         : warning
@@ -33,6 +36,8 @@ class MembershipStatusCard extends StatelessWidget {
         ? 'Atención'
         : !active
         ? (end == null ? 'Sin membresía vinculada' : 'Membresía inactiva')
+        : authorized
+        ? 'Acceso autorizado'
         : warning
         ? 'Próxima a vencer'
         : 'Membresía activa';
@@ -40,6 +45,8 @@ class MembershipStatusCard extends StatelessWidget {
         message ??
         (!active
             ? 'Tu membresía no está activa. Conservas acceso a Inicio, evaluación, Info y Perfil; entrenamiento, IA y progreso quedan bloqueados hasta renovar.'
+            : authorized
+            ? 'Tienes acceso especial autorizado por la administracion del gimnasio.'
             : warning
             ? 'Tu membresía vence en $days día(s).'
             : 'Tienes acceso a los beneficios de la app.');

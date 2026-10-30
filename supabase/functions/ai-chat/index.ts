@@ -22,6 +22,8 @@ type ChatMessage = {
 type MemberProfile = {
   membership_active?: boolean | null;
   membership_end?: string | null;
+  authorized_access?: boolean | null;
+  authorized_access_expires_at?: string | null;
 };
 
 function validHistory(value: unknown): ChatMessage[] {
@@ -106,6 +108,15 @@ function todayInElSalvador(): string {
 }
 
 function hasActiveMembership(profile: MemberProfile): boolean {
+  if (profile.authorized_access === true) {
+    if (!profile.authorized_access_expires_at) {
+      return true;
+    }
+
+    return profile.authorized_access_expires_at.slice(0, 10) >=
+      todayInElSalvador();
+  }
+
   if (profile.membership_active !== true) {
     return false;
   }
@@ -218,7 +229,10 @@ Deno.serve(async (request) => {
    * 2. VERIFICAR MEMBRESÍA
    */
   const profileUrl = new URL(`${supabaseUrl}/rest/v1/member_profiles`);
-  profileUrl.searchParams.set("select", "membership_active,membership_end");
+  profileUrl.searchParams.set(
+    "select",
+    "membership_active,membership_end,authorized_access,authorized_access_expires_at",
+  );
   profileUrl.searchParams.set("auth_user_id", `eq.${userId}`);
   profileUrl.searchParams.set("limit", "1");
 

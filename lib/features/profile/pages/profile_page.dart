@@ -116,7 +116,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 FeatureListItem(
                   icon: Icons.badge_outlined,
                   title: 'Membresía',
-                  description: widget.membership.active
+                  description: widget.membership.authorized
+                      ? 'Acceso especial autorizado por la administracion del gimnasio.'
+                      : widget.membership.active
                       ? 'Membresía activa validada desde el perfil conectado.'
                       : 'Sin membresía activa. Puedes usar Inicio, evaluación, Info y Perfil.',
                 ),

@@ -40,6 +40,7 @@ class HomePage extends StatelessWidget {
             end: membership.end,
             days: membership.days,
             active: membership.active,
+            authorized: membership.authorized,
           ),
         ],
       ),
