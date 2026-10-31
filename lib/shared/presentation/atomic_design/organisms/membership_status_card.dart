@@ -7,18 +7,24 @@ class MembershipStatusCard extends StatelessWidget {
     required this.end,
     required this.days,
     required this.active,
+    this.authorizedAccess = false,
+    this.authorizedAccessExpiresAt,
   }) : message = null;
 
   const MembershipStatusCard.error(this.message, {super.key})
     : name = '',
       end = null,
       days = -1,
-      active = false;
+      active = false,
+      authorizedAccess = false,
+      authorizedAccessExpiresAt = null;
 
   final String name;
   final DateTime? end;
   final int days;
   final bool active;
+  final bool authorizedAccess;
+  final DateTime? authorizedAccessExpiresAt;
   final String? message;
 
   @override
@@ -31,6 +37,8 @@ class MembershipStatusCard extends StatelessWidget {
         : Colors.greenAccent;
     final title = message != null
         ? 'Atención'
+        : authorizedAccess
+        ? 'Acceso autorizado'
         : !active
         ? (end == null ? 'Sin membresía vinculada' : 'Membresía inactiva')
         : warning
@@ -38,7 +46,9 @@ class MembershipStatusCard extends StatelessWidget {
         : 'Membresía activa';
     final detail =
         message ??
-        (!active
+        (authorizedAccess
+            ? 'Tienes acceso autorizado a todas las funciones protegidas de la app.'
+            : !active
             ? 'Tu membresía no está activa. Conservas acceso a Inicio, evaluación, Info y Perfil; entrenamiento, IA y progreso quedan bloqueados hasta renovar.'
             : warning
             ? 'Tu membresía vence en $days día(s).'
@@ -75,7 +85,15 @@ class MembershipStatusCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(height: 1.5),
                 ),
-                if (end != null)
+                if (authorizedAccess && authorizedAccessExpiresAt != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 18),
+                    child: Text(
+                      'Acceso hasta: ${authorizedAccessExpiresAt!.day.toString().padLeft(2, '0')}/${authorizedAccessExpiresAt!.month.toString().padLeft(2, '0')}/${authorizedAccessExpiresAt!.year}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  )
+                else if (end != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 18),
                     child: Text(
