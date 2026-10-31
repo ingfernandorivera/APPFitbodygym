@@ -24,10 +24,13 @@ class MembershipStatus {
     final startOfToday = DateTime(today.year, today.month, today.day);
     final days = end?.difference(startOfToday).inDays ?? -1;
     final authorizedAccessExpiresAt = DateTime.tryParse(
-      '${data['authorized_access_expires_at']}',
+      '${data['authorized_access_expires_at'] ?? data['app_access_expires_at']}',
     );
+    final accessEnabled =
+        data['authorized_access'] == true ||
+        data['app_access_status'] == 'active';
     final authorizedAccess =
-        data['authorized_access'] == true &&
+        accessEnabled &&
         (authorizedAccessExpiresAt == null ||
             !authorizedAccessExpiresAt.isBefore(startOfToday));
     final paidMembershipActive = data['membership_active'] == true && days >= 0;

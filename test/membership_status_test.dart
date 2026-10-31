@@ -28,4 +28,16 @@ void main() {
     expect(status.active, isFalse);
     expect(status.authorizedAccess, isFalse);
   });
+
+  test('panel app access fields unlock an existing app user', () {
+    final status = MembershipStatus.fromData({
+      'membership_active': false,
+      'membership_end': '2026-10-09',
+      'app_access_status': 'active',
+      'app_access_expires_at': '2026-11-29T23:59:59.999Z',
+    }, now: today);
+
+    expect(status.active, isTrue);
+    expect(status.authorizedAccess, isTrue);
+  });
 }
