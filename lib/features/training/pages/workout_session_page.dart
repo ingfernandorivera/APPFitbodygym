@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/exercise_catalog.dart';
+import '../data/training_rules.dart';
 import '../data/workout_history_store.dart';
 import '../models/workout_plan.dart';
 import '../models/workout_session.dart';
@@ -782,7 +783,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildCoachRecommendationBanner(input, isCompleted),
+                  const SizedBox(height: 8),
                   ...input.sets.asMap().entries.map((entry) {
                     final setIndex = entry.key;
                     final s = entry.value;
@@ -903,6 +907,67 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoachRecommendationBanner(
+    _ExerciseInput input,
+    bool isCompleted,
+  ) {
+    final ex = input.exercise;
+    final prevResult = previous[ex.stableId];
+    final suggestion = const WorkoutProgression().suggest(ex, prevResult);
+    final completedPrevSets =
+        prevResult?.sets.where((s) => s.completed && !s.warmup).toList() ?? [];
+    final hasPrevWeight =
+        completedPrevSets.isNotEmpty && completedPrevSets.last.weightKg > 0;
+
+    final String recommendationText;
+    if (ex.type == 'cardio') {
+      recommendationText =
+          'Recomendación IA: Mantén un ritmo constante y controlado durante el tiempo indicado y regístralo al terminar.';
+    } else if (hasPrevWeight) {
+      final lastKg = completedPrevSets.last.weightKg;
+      final formattedLast = lastKg.truncateToDouble() == lastKg
+          ? lastKg.toInt().toString()
+          : lastKg.toStringAsFixed(1);
+      recommendationText =
+          'Coach IA (Último peso: $formattedLast kg): ${suggestion.message} Anota el peso que uses hoy para medir tu avance.';
+    } else {
+      recommendationText =
+          'Recomendación IA: Usa un peso ideal para ti que te permita hacer de ${ex.minReps} a ${ex.maxReps} reps con buena postura. Escribe el peso (kg) que vayas usando para ver tu avance.';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.brand.withValues(alpha: isCompleted ? 0.06 : 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.brand.withValues(alpha: isCompleted ? 0.18 : 0.35),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.auto_awesome_rounded,
+            size: 16,
+            color: isCompleted ? Colors.white38 : AppColors.brand,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              recommendationText,
+              style: TextStyle(
+                color: isCompleted ? Colors.white54 : const Color(0xFFEAECEF),
+                fontSize: 11.5,
+                height: 1.35,
+              ),
+            ),
+          ),
         ],
       ),
     );
