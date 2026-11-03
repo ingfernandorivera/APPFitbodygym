@@ -729,19 +729,42 @@ class _AiChatPageState extends State<AiChatPage> {
     final parsedDays = <WorkoutDay>[];
     int currentDayNum = 0;
     String currentDayTitle = '';
+    String currentDayFocus = '';
     final currentDayExercises = <WorkoutExercise>[];
     final dayRegex = RegExp(
-      r'(?:####\s*|###\s*|\*\*)?D[íi]a\s+(\d+)\s*[:–—\-]\s*([^\n\*]+)(?:\*\*)?',
+      r'(?:####\s*|###\s*|##\s*|\*\*)?D[íi]a\s+(\d+)(?:\s*\([^)]*\))?\s*[:–—\-]\s*([^\n\*]+)(?:\*\*)?',
       caseSensitive: false,
     );
 
+    String inferDayFocus(String title, List<WorkoutExercise> exercises) {
+      final parenMatch = RegExp(r'\(([^)]+)\)').firstMatch(title);
+      if (parenMatch != null && parenMatch.group(1)!.trim().isNotEmpty) {
+        return parenMatch.group(1)!.trim();
+      }
+      final groups = <String>[];
+      for (final ex in exercises) {
+        if (!groups.contains(ex.muscleGroup)) {
+          groups.add(ex.muscleGroup);
+        }
+      }
+      if (groups.isNotEmpty) {
+        return groups.take(3).join(', ');
+      }
+      return goal;
+    }
+
     void finishCurrentDay() {
       if (currentDayNum > 0 && currentDayExercises.isNotEmpty) {
+        final effectiveTitle =
+            currentDayTitle.isNotEmpty ? currentDayTitle : 'Día $currentDayNum';
+        final effectiveFocus = currentDayFocus.isNotEmpty
+            ? currentDayFocus
+            : inferDayFocus(effectiveTitle, currentDayExercises);
         parsedDays.add(
           WorkoutDay(
             dayNumber: currentDayNum,
-            title: currentDayTitle.isNotEmpty ? currentDayTitle : 'Día $currentDayNum',
-            focus: goal,
+            title: effectiveTitle,
+            focus: effectiveFocus,
             exercises: List.of(currentDayExercises),
           ),
         );
@@ -749,13 +772,18 @@ class _AiChatPageState extends State<AiChatPage> {
       }
     }
 
+    final maxExercisesPerDay =
+        (profile?.minutesPerSession ?? 60) >= 75 ? 6 : 5;
+
     for (final rawLine in lines) {
       final line = rawLine.trim();
       final dayMatch = dayRegex.firstMatch(line);
       if (dayMatch != null) {
         finishCurrentDay();
-        currentDayNum = int.tryParse(dayMatch.group(1) ?? '') ?? (parsedDays.length + 1);
+        currentDayNum =
+            int.tryParse(dayMatch.group(1) ?? '') ?? (parsedDays.length + 1);
         currentDayTitle = (dayMatch.group(2) ?? '').replaceAll('*', '').trim();
+        currentDayFocus = '';
         continue;
       }
 
@@ -766,28 +794,65 @@ class _AiChatPageState extends State<AiChatPage> {
               RegExp(r'^\d+[\.\)]\s+').hasMatch(line));
 
       if (isExerciseLine) {
-        final cleaned = line.replaceFirst(RegExp(r'^([-*•]|\d+[\.\)])\s*'), '').trim();
-        final parts = cleaned.split(RegExp(r'[:–—-]'));
-        final rawName = parts[0].replaceAll('*', '').trim();
+        final cleaned =
+            line.replaceFirst(RegExp(r'^([-*•]|\d+[\.\)])\s*'), '').trim();
 
         int sets = 3;
         int minReps = 10;
         int maxReps = 12;
 
-        final setsMatch = RegExp(r'(\d+)\s*series', caseSensitive: false).firstMatch(cleaned);
-        if (setsMatch != null) sets = int.tryParse(setsMatch.group(1) ?? '') ?? 3;
-
+        // Soportar tanto "4 series x 8-10 reps" como "4x8-10" o "3 × 12"
+        final compactSetRep = RegExp(
+          r'(\d+)\s*[x×]\s*(\d+)(?:\s*[-–a]\s*(\d+))?',
+          caseSensitive: false,
+        ).firstMatch(cleaned);
+        final setsMatch = RegExp(
+          r'(\d+)\s*series',
+          caseSensitive: false,
+        ).firstMatch(cleaned);
         final repsMatch = RegExp(
           r'(\d+)(?:\s*[-–a]\s*(\d+))?\s*(?:reps|repeticiones)',
           caseSensitive: false,
         ).firstMatch(cleaned);
+
+        if (setsMatch != null) {
+          sets = int.tryParse(setsMatch.group(1) ?? '') ?? 3;
+        } else if (compactSetRep != null) {
+          sets = int.tryParse(compactSetRep.group(1) ?? '') ?? 3;
+        }
+
         if (repsMatch != null) {
           minReps = int.tryParse(repsMatch.group(1) ?? '') ?? 10;
           maxReps = int.tryParse(repsMatch.group(2) ?? '') ?? minReps;
+        } else if (compactSetRep != null) {
+          minReps = int.tryParse(compactSetRep.group(2) ?? '') ?? 10;
+          maxReps = int.tryParse(compactSetRep.group(3) ?? '') ?? minReps;
         } else if (cleaned.toLowerCase().contains('fallo')) {
           minReps = 8;
           maxReps = 12;
         }
+
+        // Extraer el nombre limpio del ejercicio antes de ":" o "—" o del patrón de series
+        var rawName = cleaned;
+        final colonIdx = rawName.indexOf(':');
+        final dashSeparatorIdx =
+            RegExp(r'\s+[–—-]\s+').firstMatch(rawName)?.start ?? -1;
+        final setsStartIdx = RegExp(
+              r'\(?\d+\s*(?:series|[x×]\s*\d+)',
+              caseSensitive: false,
+            ).firstMatch(rawName)?.start ??
+            -1;
+
+        var cutIdx = -1;
+        for (final idx in [colonIdx, dashSeparatorIdx, setsStartIdx]) {
+          if (idx > 0 && (cutIdx == -1 || idx < cutIdx)) {
+            cutIdx = idx;
+          }
+        }
+        if (cutIdx > 0) {
+          rawName = rawName.substring(0, cutIdx);
+        }
+        rawName = rawName.replaceAll('*', '').trim();
 
         // Actualizar el contexto del día antes de intentar el match
         _dayContext = currentDayTitle.isNotEmpty ? currentDayTitle : goal;
@@ -796,50 +861,70 @@ class _AiChatPageState extends State<AiChatPage> {
 
         // Si el ejercicio sugerido por la IA está prohibido por las limitaciones/equipo del usuario,
         // lo reemplazamos automáticamente por un ejercicio seguro compatible del catálogo
-        if (exercise != null && profile != null && !allowedExercise(exercise, profile)) {
+        if (exercise != null &&
+            profile != null &&
+            !allowedExercise(exercise, profile)) {
           final targetMuscleNorm = normalized(exercise.muscleGroup);
-          exercise = ExerciseCatalog.exercises.firstWhere(
-            (e) => !currentDayExercises.any((ce) => ce.stableId == e.stableId) &&
-                allowedExercise(e, profile) &&
-                (normalized(e.muscleGroup).contains(targetMuscleNorm) ||
-                    e.primaryMuscles.any((p) => normalized(p).contains(targetMuscleNorm))),
-            orElse: () => ExerciseCatalog.exercises.firstWhere(
-              (e) => !currentDayExercises.any((ce) => ce.stableId == e.stableId) &&
-                  allowedExercise(e, profile),
-              orElse: () => exercise!,
-            ),
-          ).copyWith(sets: sets, targetMin: minReps, targetMax: maxReps);
+          exercise = ExerciseCatalog.exercises
+              .firstWhere(
+                (e) =>
+                    !currentDayExercises.any((ce) => ce.stableId == e.stableId) &&
+                    allowedExercise(e, profile) &&
+                    (normalized(e.muscleGroup).contains(targetMuscleNorm) ||
+                        e.primaryMuscles
+                            .any((p) => normalized(p).contains(targetMuscleNorm))),
+                orElse: () => ExerciseCatalog.exercises.firstWhere(
+                  (e) =>
+                      !currentDayExercises.any((ce) => ce.stableId == e.stableId) &&
+                      allowedExercise(e, profile),
+                  orElse: () => exercise!,
+                ),
+              )
+              .copyWith(sets: sets, targetMin: minReps, targetMax: maxReps);
         }
 
         // Si no se reconoció el ejercicio, buscar en el catálogo uno compatible con el músculo del día
-        // Usamos keyword matching en lugar de string-contains para mayor precisión
         if (exercise == null) {
-          final dayTitleForFallback = currentDayTitle.isNotEmpty ? currentDayTitle : goal;
-          final dayFocusNorm = normalized(dayTitleForFallback);
+          final dayTitleForFallback =
+              currentDayTitle.isNotEmpty ? currentDayTitle : goal;
+          final dayFocusNorm = normalized('$dayTitleForFallback $rawName');
           final muscleKeywords = _extractMuscleKeywords(dayFocusNorm);
 
           final candidates = ExerciseCatalog.exercises.where((e) {
-            if (e.catalogId == null || !e.catalogId!.startsWith('ex_')) return false;
-            if (currentDayExercises.any((ce) => ce.stableId == e.stableId)) return false;
+            if (e.catalogId == null || !e.catalogId!.startsWith('ex_')) {
+              return false;
+            }
+            if (currentDayExercises.any((ce) => ce.stableId == e.stableId)) {
+              return false;
+            }
+            if (parsedDays.any(
+              (d) => d.exercises.any((pe) => pe.stableId == e.stableId),
+            )) {
+              return false;
+            }
             if (profile != null && !allowedExercise(e, profile)) return false;
             if (muscleKeywords.isNotEmpty) {
               final eGroup = normalized(e.muscleGroup);
               final ePrimary = e.primaryMuscles.map(normalized).join(' ');
-              return muscleKeywords.any((k) => eGroup.contains(k) || ePrimary.contains(k));
+              return muscleKeywords
+                  .any((k) => eGroup.contains(k) || ePrimary.contains(k));
             }
             return normalized(e.muscleGroup).contains(dayFocusNorm) ||
                 e.primaryMuscles.any((p) => normalized(p).contains(dayFocusNorm));
           }).toList();
 
           if (candidates.isNotEmpty) {
-            exercise = candidates.first.copyWith(sets: sets, targetMin: minReps, targetMax: maxReps);
+            exercise = candidates.first.copyWith(
+              sets: sets,
+              targetMin: minReps,
+              targetMax: maxReps,
+            );
           }
         }
 
-
-        // Solo añadir si es un ejercicio válido y no excede 4-5 por sesión (para respetar duración)
+        // Solo añadir si es un ejercicio válido y respeta el límite de la sesión
         if (exercise != null &&
-            currentDayExercises.length < 5 &&
+            currentDayExercises.length < maxExercisesPerDay &&
             !currentDayExercises.any((e) => e.stableId == exercise!.stableId)) {
           currentDayExercises.add(exercise);
         }
@@ -868,7 +953,7 @@ class _AiChatPageState extends State<AiChatPage> {
       goal: goal,
       plannedMinutes: profile?.minutesPerSession ?? 60,
       days: parsedDays,
-      changeReason: 'Rutina adaptada con los ejercicios exactos solicitados',
+      changeReason: 'Rutina diseñada y verificada por tu Coach IA',
       createdAt: DateTime.now(),
       block: 1,
       week: 1,
@@ -885,95 +970,471 @@ class _AiChatPageState extends State<AiChatPage> {
     required int daysCount,
     required String planName,
     required String focusStr,
+    bool singleMuscleExclusive = false,
   }) {
     final effectiveDays = (daysCount >= 1 && daysCount <= 7)
         ? daysCount
         : profile.daysPerWeek;
 
+    final priorities = focusMuscles.isNotEmpty
+        ? focusMuscles
+        : profile.priorityMuscles;
+
     final effectiveProfile = profile.copyWith(
       daysPerWeek: effectiveDays,
-      priorityMuscles: focusMuscles.isNotEmpty
-          ? focusMuscles
-          : profile.priorityMuscles,
+      priorityMuscles: priorities,
     );
 
-    final targetedPool = ExerciseCatalog.exercises
+    final beginner = normalized(effectiveProfile.experience).contains('princip');
+    final strength = normalized(effectiveProfile.goal).contains('fuerza');
+    final defaultSets = beginner ? 3 : 3;
+    final defaultMinReps = strength ? 6 : 8;
+    final defaultMaxReps = strength ? 8 : 12;
+    final defaultRest = strength ? 90 : 75;
+    final sessionMinutes = effectiveProfile.minutesPerSession >= 15
+        ? effectiveProfile.minutesPerSession
+        : 60;
+
+    final compatiblePool = ExerciseCatalog.exercises
         .where((e) => allowedExercise(e, effectiveProfile))
-        .where((e) {
-          if (focusMuscles.isEmpty) return true;
-          return focusMuscles.any((m) {
-            final normM = normalized(m);
-            return normalized(e.muscleGroup).contains(normM) ||
-                e.primaryMuscles.any((p) => normalized(p).contains(normM));
-          });
-        })
+        .where((e) => e.type != 'cardio')
         .toList();
 
-    final generalPool = ExerciseCatalog.exercises
-        .where((e) => allowedExercise(e, effectiveProfile))
-        .toList();
+    bool matchesCategory(WorkoutExercise e, String category) {
+      final g = normalized(e.muscleGroup);
+      final p = e.primaryMuscles.map(normalized).join(' ');
+      final id = e.id;
+      final nameNorm = normalized(e.name);
+      switch (category) {
+        case 'chest':
+          return g.contains('pecho');
+        case 'back':
+          return g.contains('espalda');
+        case 'shoulders':
+          return g.contains('hombro') || id == 'face_pull';
+        case 'quads':
+          return (g.contains('pierna') || g.contains('cuadricep')) &&
+              (p.contains('cuadricep') ||
+                  id.contains('leg_press') ||
+                  id.contains('belt_squat') ||
+                  id.contains('squat') ||
+                  id.contains('leg_extension') ||
+                  id.contains('lunge'));
+        case 'posterior':
+          return g.contains('gluteo') ||
+              ((g.contains('pierna') || g.contains('gluteo') || g.contains('isquio')) &&
+                  (p.contains('isquio') ||
+                      p.contains('femoral') ||
+                      p.contains('gluteo') ||
+                      id.contains('rdl') ||
+                      id.contains('deadlift') ||
+                      id.contains('hip_thrust') ||
+                      id.contains('glute') ||
+                      id.contains('leg_curl') ||
+                      id.contains('abduction')));
+        case 'calves':
+          return g.contains('pantorrilla') ||
+              nameNorm.contains('talon') ||
+              id.contains('calf');
+        case 'biceps':
+          return (g.contains('brazo') || g.contains('bicep')) &&
+              (p.contains('bicep') || nameNorm.contains('curl'));
+        case 'triceps':
+          return (g.contains('brazo') || g.contains('tricep')) &&
+              (p.contains('tricep') ||
+                  nameNorm.contains('tricep') ||
+                  id == 'assisted_dip');
+        case 'core':
+          return g.contains('abdomen') ||
+              g.contains('core') ||
+              id.contains('crunch') ||
+              id.contains('pallof') ||
+              id.contains('woodchop') ||
+              id.contains('hyperextension');
+        default:
+          return false;
+      }
+    }
 
-    final pool = targetedPool.isNotEmpty ? targetedPool : generalPool;
+    String mapMuscleNameToCategory(String muscle) {
+      final m = normalized(muscle);
+      if (m.contains('pecho')) return 'chest';
+      if (m.contains('espalda')) return 'back';
+      if (m.contains('hombro')) return 'shoulders';
+      if (m.contains('gluteo')) return 'posterior';
+      if (m.contains('pierna') || m.contains('cuadricep')) return 'quads';
+      if (m.contains('isquio') || m.contains('femoral')) return 'posterior';
+      if (m.contains('brazo') || m.contains('bicep')) return 'biceps';
+      if (m.contains('tricep')) return 'triceps';
+      if (m.contains('abdomen') || m.contains('core')) return 'core';
+      return 'chest';
+    }
 
-    final days = <WorkoutDay>[];
-    for (var day = 0; day < effectiveDays; day++) {
-      final selected = <WorkoutExercise>[];
-      final dayPool = List<WorkoutExercise>.of(pool);
+    final estimator = const WorkoutDurationEstimator();
+    final maxExercises = beginner
+        ? 4
+        : (sessionMinutes >= 75 ? 6 : (sessionMinutes >= 50 ? 5 : 4));
 
-      for (var i = 0; i < dayPool.length && selected.length < 4; i++) {
-        final exercise = dayPool[(i + day * 2) % dayPool.length];
-        if (!selected.any((e) => e.stableId == exercise.stableId)) {
-          selected.add(
-            exercise.copyWith(
-              sets: 3,
-              targetMin: 8,
-              targetMax: 12,
-              targetRir: 2,
-              restSeconds: 75,
-            ),
-          );
+    WorkoutExercise prescribe(WorkoutExercise base) {
+      final isIsolation = !base.compound;
+      return base.copyWith(
+        sets: defaultSets,
+        targetMin: isIsolation ? 10 : defaultMinReps,
+        targetMax: isIsolation ? 15 : defaultMaxReps,
+        targetRir: beginner ? 3 : 2,
+        restSeconds: isIsolation ? 60 : defaultRest,
+      );
+    }
+
+    // Caso 1: El usuario pidió explícitamente entrenar SOLO 1 grupo muscular (ej. "solo pecho")
+    if (singleMuscleExclusive && focusMuscles.length == 1) {
+      final targetMuscle = focusMuscles.first;
+      final cat = mapMuscleNameToCategory(targetMuscle);
+      final musclePool = compatiblePool
+          .where((e) =>
+              matchesCategory(e, cat) ||
+              (cat == 'quads' && matchesCategory(e, 'posterior')))
+          .toList();
+      final sourcePool = musclePool.isNotEmpty ? musclePool : compatiblePool;
+      final usedAcrossDays = <String>{};
+      final days = <WorkoutDay>[];
+
+      for (var day = 0; day < effectiveDays; day++) {
+        final selected = <WorkoutExercise>[];
+        for (final candidate in sourcePool) {
+          if (selected.length >= 4) break;
+          if (usedAcrossDays.contains(candidate.stableId) &&
+              sourcePool.length >= effectiveDays * 3) {
+            continue;
+          }
+          if (!selected.any((s) => s.stableId == candidate.stableId)) {
+            final p = prescribe(candidate);
+            final trial = WorkoutDay(
+              dayNumber: day + 1,
+              title: '',
+              focus: '',
+              exercises: [...selected, p],
+            );
+            if (estimator.minutes(trial) <= sessionMinutes) {
+              selected.add(p);
+              usedAcrossDays.add(candidate.stableId);
+            }
+          }
         }
+        if (selected.length < 3) {
+          for (final candidate in sourcePool) {
+            if (selected.length >= 4) break;
+            if (!selected.any((s) => s.stableId == candidate.stableId)) {
+              selected.add(prescribe(candidate));
+            }
+          }
+        }
+        final dayLetter = String.fromCharCode(65 + day);
+        days.add(
+          WorkoutDay(
+            dayNumber: day + 1,
+            title: '$targetMuscle $dayLetter',
+            focus: targetMuscle,
+            exercises: selected,
+          ),
+        );
       }
 
-      if (selected.length < 3) {
-        for (final ex in generalPool) {
-          if (selected.length >= 3) break;
-          if (!selected.any((e) => e.stableId == ex.stableId)) {
-            selected.add(
-              ex.copyWith(
-                sets: 3,
-                targetMin: 10,
-                targetMax: 12,
-                restSeconds: 60,
-              ),
-            );
+      return WorkoutPlan(
+        id: currentPlan?.id,
+        version: (currentPlan?.version ?? 0) + 1,
+        name: planName,
+        goal: focusStr,
+        plannedMinutes: sessionMinutes,
+        days: days,
+        changeReason: 'Rutina especializada en $focusStr',
+        createdAt: DateTime.now(),
+        block: 1,
+        week: 1,
+        source: 'ai',
+        isDemo: false,
+      );
+    }
+
+    // Caso 2: Coach Experto — Split Semanal Completo y Equilibrado
+    // Entrena todo el cuerpo con coherencia biomecánica, dando prioridad y mayor volumen
+    // a los músculos prioritarios del usuario (ej. Pecho y Piernas) sin descuidar Espalda, Hombros, Brazos y Core.
+    final priorityCategories = priorities.map(mapMuscleNameToCategory).toSet();
+    final primaryPriorityCat =
+        priorityCategories.isNotEmpty ? priorityCategories.first : 'chest';
+
+    List<({String title, String focus, List<String> slots})> buildSplitSpec(
+      int numDays,
+    ) {
+      final hasChestPriority = priorityCategories.contains('chest');
+      final hasLegsPriority = priorityCategories.contains('quads') ||
+          priorityCategories.contains('posterior');
+
+      final priorityLabel = priorities.isNotEmpty
+          ? ' · Énfasis ${priorities.take(2).join(' y ')}'
+          : '';
+
+      if (numDays == 1) {
+        return [
+          (
+            title: 'Cuerpo Completo Integral$priorityLabel',
+            focus: 'Pecho, Espalda, Piernas, Hombros y Core',
+            slots: ['chest', 'quads', 'back', 'posterior', 'shoulders', 'core'],
+          ),
+        ];
+      }
+      if (numDays == 2) {
+        return [
+          (
+            title: 'Tren Superior Completo',
+            focus: 'Pecho, Espalda, Hombros y Brazos',
+            slots: ['chest', 'back', 'chest', 'shoulders', 'triceps', 'biceps'],
+          ),
+          (
+            title: 'Tren Inferior y Core',
+            focus: 'Cuádriceps, Glúteos, Isquiotibiales y Pantorrilla',
+            slots: ['quads', 'posterior', 'quads', 'posterior', 'calves', 'core'],
+          ),
+        ];
+      }
+      if (numDays == 3) {
+        // Split Coach Clásico de 3 días: Empuje / Pierna Completa / Tirón + Refuerzo Prioritario
+        final reinforcementSlot = hasChestPriority
+            ? 'chest'
+            : (hasLegsPriority ? 'posterior' : primaryPriorityCat);
+        return [
+          (
+            title: hasChestPriority
+                ? 'Empuje y Pecho Prioritario'
+                : 'Empuje (Pecho, Hombros y Tríceps)',
+            focus: 'Pecho, Hombros y Tríceps',
+            slots: [
+              'chest',
+              'chest',
+              'shoulders',
+              'shoulders',
+              'triceps',
+              'chest',
+            ],
+          ),
+          (
+            title: hasLegsPriority
+                ? 'Pierna Completa Prioritaria'
+                : 'Tren Inferior y Glúteos',
+            focus: 'Cuádriceps, Isquiotibiales, Glúteos y Pantorrilla',
+            slots: [
+              'quads',
+              'posterior',
+              'quads',
+              'posterior',
+              'calves',
+              'core',
+            ],
+          ),
+          (
+            title: 'Tirón, Espalda y Estímulo Prioritario',
+            focus: priorities.isNotEmpty
+                ? 'Espalda, Bíceps y Énfasis ${priorities.first}'
+                : 'Espalda, Deltoide Posterior, Bíceps y Core',
+            slots: [
+              'back',
+              'back',
+              'shoulders',
+              'biceps',
+              reinforcementSlot,
+              'core',
+            ],
+          ),
+        ];
+      }
+      if (numDays == 4) {
+        // Split Torso / Pierna (Frecuencia 2)
+        return [
+          (
+            title: 'Torso A (Énfasis Pecho, Espalda y Tríceps)',
+            focus: 'Pecho, Espalda, Hombro Lateral y Tríceps',
+            slots: ['chest', 'back', 'chest', 'shoulders', 'triceps', 'chest'],
+          ),
+          (
+            title: 'Pierna A (Énfasis Cuádriceps, Glúteo y Pantorrilla)',
+            focus: 'Cuádriceps, Glúteos, Isquiotibiales y Pantorrilla',
+            slots: ['quads', 'quads', 'posterior', 'posterior', 'calves', 'core'],
+          ),
+          (
+            title: 'Torso B (Énfasis Espalda, Hombros, Pecho y Bíceps)',
+            focus: 'Espalda, Hombros, Pecho Superior y Bíceps',
+            slots: ['back', 'chest', 'back', 'shoulders', 'biceps', 'biceps'],
+          ),
+          (
+            title: 'Pierna B y Core (Énfasis Isquiotibiales y Glúteos)',
+            focus: 'Isquiotibiales, Glúteos, Cuádriceps y Abdomen',
+            slots: ['posterior', 'posterior', 'quads', 'calves', 'core', 'quads'],
+          ),
+        ];
+      }
+      if (numDays == 5) {
+        // Push / Pull / Legs / Upper / Lower
+        return [
+          (
+            title: 'Empuje (Pecho, Hombros y Tríceps)',
+            focus: 'Pecho, Deltoides y Tríceps',
+            slots: ['chest', 'chest', 'shoulders', 'shoulders', 'triceps', 'chest'],
+          ),
+          (
+            title: 'Tirón (Espalda, Hombro Posterior y Bíceps)',
+            focus: 'Espalda, Deltoide Posterior y Bíceps',
+            slots: ['back', 'back', 'back', 'shoulders', 'biceps', 'biceps'],
+          ),
+          (
+            title: 'Pierna A (Énfasis Cuádriceps y Glúteos)',
+            focus: 'Cuádriceps, Glúteos y Pantorrillas',
+            slots: ['quads', 'quads', 'posterior', 'quads', 'calves', 'core'],
+          ),
+          (
+            title: 'Tren Superior Prioritario',
+            focus: 'Pecho, Espalda, Hombros y Brazos',
+            slots: ['chest', 'back', 'shoulders', 'chest', 'triceps', 'biceps'],
+          ),
+          (
+            title: 'Pierna B y Core (Énfasis Isquiotibiales y Glúteos)',
+            focus: 'Isquiotibiales, Glúteos, Cuádriceps y Abdomen',
+            slots: ['posterior', 'posterior', 'quads', 'posterior', 'calves', 'core'],
+          ),
+        ];
+      }
+      // 6 o 7 días: Push / Pull / Legs × 2 (+ Día de Core/Acondicionamiento si es 7)
+      final base6 = [
+        (
+          title: 'Empuje A (Pecho Fuerza, Hombro y Tríceps)',
+          focus: 'Pecho, Hombros y Tríceps',
+          slots: ['chest', 'chest', 'shoulders', 'shoulders', 'triceps', 'chest'],
+        ),
+        (
+          title: 'Tirón A (Espalda Densidad y Bíceps)',
+          focus: 'Espalda, Deltoide Posterior y Bíceps',
+          slots: ['back', 'back', 'back', 'shoulders', 'biceps', 'biceps'],
+        ),
+        (
+          title: 'Pierna A (Énfasis Cuádriceps y Pantorrilla)',
+          focus: 'Cuádriceps, Glúteos y Pantorrilla',
+          slots: ['quads', 'quads', 'posterior', 'quads', 'calves', 'core'],
+        ),
+        (
+          title: 'Empuje B (Pecho Hipertrofia, Deltoide Lateral y Tríceps)',
+          focus: 'Pecho Inclinado, Hombros y Tríceps',
+          slots: ['chest', 'chest', 'shoulders', 'triceps', 'triceps', 'chest'],
+        ),
+        (
+          title: 'Tirón B (Espalda Amplitud, Trapecio y Bíceps)',
+          focus: 'Dorsales, Hombro Posterior y Bíceps',
+          slots: ['back', 'back', 'shoulders', 'biceps', 'biceps', 'core'],
+        ),
+        (
+          title: 'Pierna B (Énfasis Isquiotibiales, Glúteos y Core)',
+          focus: 'Isquiotibiales, Glúteos, Cuádriceps y Abdomen',
+          slots: ['posterior', 'posterior', 'quads', 'posterior', 'calves', 'core'],
+        ),
+        if (numDays == 7)
+          (
+            title: 'Puntos Débiles, Core y Movilidad',
+            focus: 'Prioridades Musculares y Abdomen',
+            slots: [primaryPriorityCat, 'core', 'shoulders', 'biceps', 'triceps'],
+          ),
+      ];
+      return base6;
+    }
+
+    final splitSpecs = buildSplitSpec(effectiveDays);
+    final usedGlobalIds = <String>{};
+    final days = <WorkoutDay>[];
+
+    for (var dayIdx = 0; dayIdx < splitSpecs.length; dayIdx++) {
+      final spec = splitSpecs[dayIdx];
+      final selected = <WorkoutExercise>[];
+
+      for (final slotCat in spec.slots) {
+        if (selected.length >= maxExercises) break;
+        final catCandidates = compatiblePool
+            .where((e) => matchesCategory(e, slotCat))
+            .where((e) => !selected.any((s) => s.stableId == e.stableId))
+            .toList();
+
+        if (catCandidates.isEmpty) continue;
+
+        // Priorizar ejercicios compuestos al inicio del día y evitar repetir ejercicios de días previos
+        catCandidates.sort((a, b) {
+          final aUsed = usedGlobalIds.contains(a.stableId) ? 1 : 0;
+          final bUsed = usedGlobalIds.contains(b.stableId) ? 1 : 0;
+          if (aUsed != bUsed) return aUsed.compareTo(bUsed);
+          final wantCompound = selected.length < 2;
+          if (wantCompound && a.compound != b.compound) {
+            return b.compound ? 1 : -1;
+          }
+          return 0;
+        });
+
+        for (final chosen in catCandidates) {
+          final prescribed = prescribe(chosen);
+          final trial = WorkoutDay(
+            dayNumber: dayIdx + 1,
+            title: spec.title,
+            focus: spec.focus,
+            exercises: [...selected, prescribed],
+          );
+          final fitsDuration = estimator.minutes(trial) <= sessionMinutes;
+          final fitsBeginnerSets = !beginner ||
+              trial.exercises.fold<int>(0, (s, e) => s + e.sets) <= 12;
+          if (fitsDuration && fitsBeginnerSets) {
+            selected.add(prescribed);
+            usedGlobalIds.add(chosen.stableId);
+            break;
           }
         }
       }
 
-      final dayLetter = String.fromCharCode(65 + day);
-      final dayTitle = focusMuscles.isNotEmpty
-          ? '${focusMuscles.join(' + ')} $dayLetter'
-          : 'Día ${day + 1}';
+      // Garantizar al menos 3 ejercicios por día si el tiempo lo permite
+      if (selected.length < 3) {
+        for (final fallback in compatiblePool) {
+          if (selected.length >= 3) break;
+          if (selected.any((s) => s.stableId == fallback.stableId)) continue;
+          final prescribed = prescribe(fallback);
+          final trial = WorkoutDay(
+            dayNumber: dayIdx + 1,
+            title: spec.title,
+            focus: spec.focus,
+            exercises: [...selected, prescribed],
+          );
+          if (estimator.minutes(trial) <= sessionMinutes) {
+            selected.add(prescribed);
+            usedGlobalIds.add(fallback.stableId);
+          }
+        }
+      }
 
       days.add(
         WorkoutDay(
-          dayNumber: day + 1,
-          title: dayTitle,
-          focus: focusStr,
+          dayNumber: dayIdx + 1,
+          title: spec.title,
+          focus: spec.focus,
           exercises: selected,
         ),
       );
     }
+
+    final changeReasonText = focusMuscles.isNotEmpty
+        ? 'Split completo diseñado por tu Coach con énfasis prioritario en $focusStr'
+        : (priorities.isNotEmpty
+            ? 'Split semanal equilibrado para ${effectiveProfile.goal} (priorizando ${priorities.join(' y ')})'
+            : 'Split semanal estructurado para ${effectiveProfile.goal}');
 
     return WorkoutPlan(
       id: currentPlan?.id,
       version: (currentPlan?.version ?? 0) + 1,
       name: planName,
       goal: focusStr,
-      plannedMinutes: 60,
+      plannedMinutes: sessionMinutes,
       days: days,
-      changeReason: 'Rutina adaptada con mayor énfasis en $focusStr según tu solicitud',
+      changeReason: changeReasonText,
       createdAt: DateTime.now(),
       block: 1,
       week: 1,
@@ -1487,15 +1948,34 @@ class _AiChatPageState extends State<AiChatPage> {
     return result;
   }
 
-  List<String> _extractRequestedFocus(String text, [List<String>? extraTexts]) {
-    // 1. Extraer del texto principal (ej. el mensaje actual del usuario)
+  bool _isExclusiveSingleMuscleRequest(String text) {
+    final norm = normalized(text);
+    return norm.contains('solo ') ||
+        norm.contains('unicamente ') ||
+        norm.contains('exclusivamente ') ||
+        norm.contains('solamente ') ||
+        norm.contains('puro ');
+  }
+
+  List<String> _extractRequestedFocus(String text, [List<String>? extraUserTexts]) {
+    // 1. Extraer del mensaje actual del usuario
     final fromMain = _extractMusclesFromText(text);
     if (fromMain.isNotEmpty) {
       return fromMain;
     }
-    // 2. Solo si el texto principal no menciona músculos, buscar en los mensajes previos más recientes
-    if (extraTexts != null && extraTexts.isNotEmpty) {
-      for (final t in extraTexts.reversed) {
+    // 2. Solo si el mensaje actual es una confirmación corta (ej. "aplícala", "ponla en entrenar", "deja esa")
+    // buscamos en los mensajes previos del propio usuario (nunca en respuestas del asistente)
+    final norm = normalized(text);
+    final isFollowUpConfirmation = norm.contains('aplic') ||
+        norm.contains('entrenar') ||
+        norm.contains('guard') ||
+        norm.contains('deja') ||
+        norm.contains('ponla') ||
+        norm.contains('anotar');
+    if (isFollowUpConfirmation &&
+        extraUserTexts != null &&
+        extraUserTexts.isNotEmpty) {
+      for (final t in extraUserTexts.reversed) {
         final fromPrev = _extractMusclesFromText(t);
         if (fromPrev.isNotEmpty) {
           return fromPrev;
@@ -1511,6 +1991,7 @@ class _AiChatPageState extends State<AiChatPage> {
     required List<String> focusMuscles,
     int? requestedDays,
     String? customReply,
+    bool singleMuscleExclusive = false,
   }) {
     final baseProfile = userContext.trainingProfile ??
         TrainingProfile(
@@ -1526,17 +2007,19 @@ class _AiChatPageState extends State<AiChatPage> {
           equipment: userContext.equipment,
         );
 
-    final effectiveDays = (requestedDays != null && requestedDays >= 1 && requestedDays <= 7)
-        ? requestedDays
-        : baseProfile.daysPerWeek;
+    final effectiveDays =
+        (requestedDays != null && requestedDays >= 1 && requestedDays <= 7)
+            ? requestedDays
+            : baseProfile.daysPerWeek;
+
+    final profilePriorities = baseProfile.priorityMuscles.isNotEmpty
+        ? baseProfile.priorityMuscles
+        : const ['Pecho', 'Piernas'];
 
     final effectiveProfile = baseProfile.copyWith(
       daysPerWeek: effectiveDays,
-      priorityMuscles: focusMuscles.isNotEmpty
-          ? focusMuscles
-          : (baseProfile.priorityMuscles.isNotEmpty
-              ? baseProfile.priorityMuscles
-              : const ['Pecho', 'Piernas']),
+      priorityMuscles:
+          focusMuscles.isNotEmpty ? focusMuscles : profilePriorities,
     );
 
     final focusStr = focusMuscles.isNotEmpty
@@ -1545,13 +2028,13 @@ class _AiChatPageState extends State<AiChatPage> {
 
     final planName = focusMuscles.isNotEmpty
         ? 'Rutina con énfasis en $focusStr'
-        : (currentPlan?.name ?? 'Rutina adaptada');
+        : 'Rutina Coach: ${effectiveProfile.goal}';
 
-    WorkoutPlan? newPlan;
+    WorkoutPlan? parsedFromAi;
 
-    // 1. Prioridad: Si la IA redactó un desglose de rutina en texto, parseamos sus días y ejercicios exactos
+    // 1. Si la IA redactó un desglose de rutina en texto, parseamos sus días y ejercicios al catálogo oficial
     if (customReply != null && _hasRoutineProposalContent(customReply)) {
-      newPlan = _parseWorkoutPlanFromAiText(
+      parsedFromAi = _parseWorkoutPlanFromAiText(
         customReply,
         currentPlan: currentPlan,
         planName: planName,
@@ -1561,26 +2044,42 @@ class _AiChatPageState extends State<AiChatPage> {
       );
     }
 
-    // 2. Si no se pudo parsear de la IA, generamos un plan enfocado directamente en los músculos solicitados
-    newPlan ??= _generateTargetedPlan(
-      effectiveProfile,
-      currentPlan: currentPlan,
-      focusMuscles: focusMuscles,
-      daysCount: effectiveDays,
-      planName: planName,
-      focusStr: focusStr,
-    );
+    // 2. Si no vino desglose válido de la IA, el Coach Experto genera un split semanal completo y equilibrado
+    final newPlan = parsedFromAi ??
+        _generateTargetedPlan(
+          effectiveProfile,
+          currentPlan: currentPlan,
+          focusMuscles: focusMuscles,
+          daysCount: effectiveDays,
+          planName: planName,
+          focusStr: focusStr,
+          singleMuscleExclusive: singleMuscleExclusive,
+        );
 
     final isNew = currentPlan == null;
+
+    // 3. Construir el resumen exacto a partir de newPlan para que el texto del chat
+    // y la tarjeta interactiva "Aplicar" SIEMPRE coincidan al 100% en días, ejercicios, series y repeticiones.
     final daysSummary = newPlan.days.map((day) {
       final exLines = day.exercises
-          .map((e) => '  • ${e.name} — ${e.sets} series × ${e.repetitions} reps (descanso ${e.restSeconds}s)')
+          .map(
+            (e) =>
+                '  • ${e.name} — ${e.sets} series × ${e.minReps}-${e.maxReps} reps (descanso ${e.restSeconds}s)',
+          )
           .join('\n');
-      return 'Día ${day.dayNumber} · ${day.title} (${day.focus}):\n$exLines';
+      final header = day.title.toLowerCase().contains(day.focus.toLowerCase())
+          ? 'Día ${day.dayNumber} · ${day.title}:'
+          : 'Día ${day.dayNumber} · ${day.title} (${day.focus}):';
+      return '$header\n$exLines';
     }).join('\n\n');
 
-    final replyText = customReply ??
-        '¡Listo! He diseñado tu rutina personalizada con énfasis en $focusStr distribuida en $effectiveDays días (${effectiveProfile.minutesPerSession} min/sesión) usando el equipo de Fit Body Gym:\n\n$daysSummary\n\nPresiona el botón "Aplicar" en la tarjeta inferior para guardarla en tu sección de Entrenar.';
+    final priorityNote = (!singleMuscleExclusive &&
+            effectiveProfile.priorityMuscles.isNotEmpty)
+        ? ' dando prioridad a ${effectiveProfile.priorityMuscles.join(' y ')} dentro de una estructura equilibrada de cuerpo completo'
+        : '';
+
+    final replyText =
+        'Como tu Coach de entrenamiento, he estructurado un plan de $effectiveDays días (${newPlan.plannedMinutes} min/sesión) enfocado en $focusStr$priorityNote, seleccionando el equipo oficial de Fit Body Gym:\n\n$daysSummary\n\nRevisa la tarjeta inferior (que contiene exactamente estos mismos días y ejercicios) y presiona "Aplicar" para guardarla en Entrenar.';
 
     return AiChatResponse(
       reply: replyText,
@@ -1647,9 +2146,15 @@ class _AiChatPageState extends State<AiChatPage> {
       }
 
       final isChangeRequest = _isRoutineChangeRequest(text);
+      final singleMuscleExclusive = _isExclusiveSingleMuscleRequest(text);
+      final previousUserTexts = messages
+          .take(messages.length - 1)
+          .where((m) => m.fromUser)
+          .map((m) => m.text)
+          .toList();
       final focusMuscles = _extractRequestedFocus(
         text,
-        messages.map((m) => m.text).toList(),
+        previousUserTexts,
       );
 
       final history = messages
@@ -1681,6 +2186,7 @@ class _AiChatPageState extends State<AiChatPage> {
             currentPlan: activeWorkout,
             focusMuscles: focusMuscles,
             requestedDays: requestedDays,
+            singleMuscleExclusive: singleMuscleExclusive,
           );
         } else if (error is FunctionException && error.status == 403) {
           // Si el usuario ya tiene acceso autorizado en la app pero la Edge Function
@@ -1695,20 +2201,20 @@ class _AiChatPageState extends State<AiChatPage> {
       }
 
       // Convertimos en propuesta interactiva cuando la IA entregó una rutina estructurada
-      // o cuando el usuario solicitó explícitamente cambiar su rutina a músculos específicos.
-      final shouldAttachProposal = _hasRoutineProposalContent(reply.reply) ||
-          (isChangeRequest && focusMuscles.isNotEmpty);
+      // o cuando el usuario solicitó explícitamente crear/cambiar su rutina.
+      final shouldAttachProposal =
+          _hasRoutineProposalContent(reply.reply) || isChangeRequest;
 
       if (shouldAttachProposal && !reply.action.isProposal) {
-        final focusMusclesInReply = _extractRequestedFocus(text, [reply.reply]);
-        final targetMuscles = focusMusclesInReply.isNotEmpty ? focusMusclesInReply : focusMuscles;
-        final requestedDays = _extractRequestedDays(text) ?? _extractRequestedDays(reply.reply);
+        final requestedDays =
+            _extractRequestedDays(text) ?? _extractRequestedDays(reply.reply);
         reply = _createFocusProposal(
           userContext: userContext,
           currentPlan: activeWorkout,
-          focusMuscles: targetMuscles,
+          focusMuscles: focusMuscles,
           requestedDays: requestedDays,
           customReply: reply.reply,
+          singleMuscleExclusive: singleMuscleExclusive,
         );
       }
 

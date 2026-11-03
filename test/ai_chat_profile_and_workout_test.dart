@@ -325,4 +325,90 @@ Día 3: Pecho C (Bombeo)
       expect(find.text('Aplicar esta rutina a mi plan'), findsNothing);
     },
   );
+
+  testWidgets(
+    'Coach Experto genera split semanal equilibrado (Empuje / Pierna / Tirón) cuando el perfil prioriza Pecho y Piernas y sincroniza texto con tarjeta Aplicar',
+    (tester) async {
+      const userId = 'coach-balanced-split-test';
+      final profileStore = TrainingProfileStore(storageUserId: userId);
+      await profileStore.save(
+        const TrainingProfile(
+          weightKg: 78,
+          heightCm: 176,
+          age: 27,
+          gender: 'Hombre',
+          goal: 'Ganar masa muscular',
+          experience: 'Intermedio',
+          daysPerWeek: 3,
+          minutesPerSession: 90,
+          preferences: '',
+          limitations: '',
+          equipment: 'Gimnasio completo',
+          priorityMuscles: ['Pecho', 'Piernas'],
+        ),
+      );
+
+      final planStore = WorkoutPlanStore(storageUserId: userId);
+      await planStore.save(
+        WorkoutPlan(
+          name: 'Rutina personalizada inicial',
+          goal: 'Ganar masa muscular',
+          createdAt: DateTime.now(),
+          version: 1,
+          days: const [
+            WorkoutDay(dayNumber: 1, title: 'Día 1', focus: 'General', exercises: []),
+          ],
+        ),
+      );
+
+      final mockService = MockAiChatService();
+
+      await tester.pumpWidget(
+        app(
+          AiChatPage(
+            storageUserId: userId,
+            profileStore: profileStore,
+            planStore: planStore,
+            chatService: mockService,
+            onOpenTraining: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final inputFinder = find.byType(TextField);
+      await tester.enterText(inputFinder, 'dame una mejor rutina');
+      await tester.tap(find.byIcon(Icons.send_rounded));
+      await tester.pumpAndSettle();
+
+      // Verifica que el Coach distribuya la semana en Empuje, Pierna Completa y Tirón/Espalda
+      expect(find.textContaining('Empuje y Pecho Prioritario'), findsWidgets);
+      expect(find.textContaining('Pierna Completa Prioritaria'), findsWidgets);
+      expect(find.textContaining('Tirón, Espalda y Estímulo Prioritario'), findsWidgets);
+      expect(find.textContaining('hasta 90 min por sesión'), findsOneWidget);
+
+      await tester.tap(find.text('Aplicar'));
+      await tester.pumpAndSettle();
+
+      final savedPlan = await planStore.load();
+      expect(savedPlan, isNotNull);
+      expect(savedPlan!.days.length, 3);
+      expect(savedPlan.plannedMinutes, 90);
+      // Día 1 incluye pecho, hombro y tríceps
+      expect(
+        savedPlan.days[0].exercises.any((e) => e.muscleGroup.toLowerCase().contains('hombro')),
+        isTrue,
+      );
+      // Día 2 es de piernas (no de pecho)
+      expect(
+        savedPlan.days[1].exercises.any((e) => e.muscleGroup.toLowerCase().contains('pecho')),
+        isFalse,
+      );
+      // Día 3 incluye espalda y bíceps
+      expect(
+        savedPlan.days[2].exercises.any((e) => e.muscleGroup.toLowerCase().contains('espalda')),
+        isTrue,
+      );
+    },
+  );
 }

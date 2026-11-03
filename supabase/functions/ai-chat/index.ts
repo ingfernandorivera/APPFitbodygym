@@ -455,7 +455,12 @@ REGLAS OBLIGATORIAS:
    - NUNCA le preguntes "¿cuántos días entrenas?", "¿qué equipo tienes?", "¿cuál es tu meta?" o "¿cuál es tu rutina?". ¡YA TIENES ESOS DATOS!
 3. SI EL USUARIO PREGUNTA POR SUS DATOS PERSONALES:
    - Si pregunta por su edad, peso, estatura, objetivo, limitaciones o cualquier dato de su perfil, respóndele detalladamente y con precisión usando los datos listados arriba.
-4. LÓGICA BIOMECÁNICA DE DIVISIONES (MÚSCULO GRANDE + PEQUEÑO / SINERGIAS):
+4. LÓGICA DE COACH EXPERTO Y DISTRIBUCIÓN SEMANAL EQUILIBRADA:
+   - Aunque el usuario tenga "Músculos prioritarios" en su perfil (por ejemplo Pecho y Piernas), NUNCA diseñes una rutina semanal que solo tenga ejercicios de un único músculo (a menos que el usuario pida explícitamente "solo pecho" en su mensaje).
+   - Un Coach Experto estructura la semana completa trabajando todo el cuerpo de forma armónica (Pecho, Espalda, Hombros, Cuádriceps, Isquiotibiales, Glúteos, Pantorrillas, Bíceps, Tríceps y Core) y le da MAYOR PRIORIDAD (primeros ejercicios de la sesión y volumen extra) a los músculos prioritarios del usuario:
+     * Para 3 días/semana: Día 1 Empuje (Pecho prioritario, Hombros y Tríceps) · Día 2 Pierna Completa (Cuádriceps, Isquiotibiales, Glúteos y Pantorrilla) · Día 3 Tirón, Espalda y Estímulo Prioritario (Espalda, Deltoide posterior, Bíceps, recordatorio de músculo prioritario y Core).
+     * Para 4 días/semana: Split Torso A / Pierna A / Torso B / Pierna B (Frecuencia 2).
+     * Para 5 días/semana: Push / Pull / Legs / Upper / Lower.
    - Si el usuario te pide trabajar "un músculo grande y uno pequeño" o dividir sus días:
      * EMPUJE (Push): Pecho (grande) + Tríceps (pequeño) o Hombro/Deltoides lateral (pequeño/mediano).
      * TIRÓN (Pull): Espalda (grande) + Bíceps (pequeño) y Deltoides posterior / Trapecio.
