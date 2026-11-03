@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/exercise_catalog.dart';
 import '../data/workout_history_store.dart';
 import '../models/workout_plan.dart';
 import '../models/workout_session.dart';
+import '../widgets/exercise_video_player.dart';
 import 'exercise_detail_page.dart';
 import 'workout_result_page.dart';
 
@@ -582,7 +584,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }) {
     final ex = input.exercise;
     final isExpanded = expandedExerciseId == ex.stableId || inputs.length == 1;
-    final hasVideo = ex.mediaUrl != null && ex.mediaUrl!.isNotEmpty;
+    final resolvedMediaUrl = (ex.mediaUrl != null && ex.mediaUrl!.isNotEmpty)
+        ? ex.mediaUrl
+        : ExerciseCatalog.exercises
+              .where(
+                (c) =>
+                    c.stableId == ex.stableId ||
+                    c.id == ex.id ||
+                    c.name.toLowerCase() == ex.name.toLowerCase(),
+              )
+              .firstOrNull
+              ?.mediaUrl;
     final cardBg = isCompleted
         ? const Color(0xFF141416)
         : const Color(0xFF1B1B1E);
@@ -634,63 +646,22 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                         : null,
                   ),
                 ),
-                // Contenido del ejercicio que abre detalle y video
+                // Mini video real del ejercicio con postura inicial y botón central para reproducir/pausar
+                ExerciseMiniVideoPreview(
+                  url: resolvedMediaUrl,
+                  index: index,
+                  width: 88,
+                  height: 64,
+                  onExpand: () => _openExerciseDetail(input),
+                ),
+                const SizedBox(width: 12),
+                // Contenido del ejercicio que abre detalle y video grande
                 Expanded(
                   child: InkWell(
                     onTap: () => _openExerciseDetail(input),
                     borderRadius: BorderRadius.circular(12),
                     child: Row(
                       children: [
-                        // Miniatura con número en Rojo Fit Body Gym e indicador de video
-                        Stack(
-                          children: [
-                            Container(
-                              width: 58,
-                              height: 58,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF242428),
-                                borderRadius: BorderRadius.circular(12),
-                                border: hasVideo
-                                    ? Border.all(
-                                        color: AppColors.brand.withValues(alpha: 0.4),
-                                      )
-                                    : null,
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  hasVideo
-                                      ? Icons.play_circle_fill_rounded
-                                      : Icons.fitness_center,
-                                  size: 28,
-                                  color: AppColors.brand,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 4,
-                              left: 4,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.brand,
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: Text(
-                                  '$index',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
                         // Nombre, grupo muscular y repeticiones
                         Expanded(
                           child: Column(
@@ -742,7 +713,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                             ],
                           ),
                         ),
-                        // Flecha a la derecha para ver detalle y video
+                        // Flecha a la derecha para ver detalle y video grande
                         const Icon(
                           Icons.chevron_right,
                           color: Color(0xFF7E7E88),
