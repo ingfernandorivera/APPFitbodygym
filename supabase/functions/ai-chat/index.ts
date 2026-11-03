@@ -238,10 +238,7 @@ Deno.serve(async (request) => {
    * 2. VERIFICAR MEMBRESÍA
    */
   const profileUrl = new URL(`${supabaseUrl}/rest/v1/member_profiles`);
-  profileUrl.searchParams.set(
-    "select",
-    "membership_active,membership_end,authorized_access,authorized_access_expires_at,app_access_status,app_access_expires_at",
-  );
+  profileUrl.searchParams.set("select", "*");
   profileUrl.searchParams.set("auth_user_id", `eq.${userId}`);
   profileUrl.searchParams.set("limit", "1");
 

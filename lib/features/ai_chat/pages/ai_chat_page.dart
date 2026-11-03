@@ -1395,7 +1395,9 @@ class _AiChatPageState extends State<AiChatPage> {
 
     final hasRoutineWord = norm.contains('rutina') ||
         norm.contains('entrenamiento') ||
-        norm.contains('ejercicios');
+        norm.contains('ejercicios') ||
+        norm.contains('plan') ||
+        norm.contains('semana');
     final hasActionWord = norm.contains('modific') ||
         norm.contains('cambi') ||
         norm.contains('actualiz') ||
@@ -1405,7 +1407,18 @@ class _AiChatPageState extends State<AiChatPage> {
         norm.contains('dej') ||
         norm.contains('pon') ||
         norm.contains('aplic') ||
-        norm.contains('guard');
+        norm.contains('guard') ||
+        norm.contains('necesit') ||
+        norm.contains('quier') ||
+        norm.contains('dame') ||
+        norm.contains('haz') ||
+        norm.contains('hac') ||
+        norm.contains('distribu') ||
+        norm.contains('recomiend') ||
+        norm.contains('sugier') ||
+        norm.contains('gener') ||
+        norm.contains('nuev') ||
+        norm.contains('buen');
 
     return hasRoutineWord && hasActionWord;
   }
@@ -1559,8 +1572,15 @@ class _AiChatPageState extends State<AiChatPage> {
     );
 
     final isNew = currentPlan == null;
+    final daysSummary = newPlan.days.map((day) {
+      final exLines = day.exercises
+          .map((e) => '  • ${e.name} — ${e.sets} series × ${e.repetitions} reps (descanso ${e.restSeconds}s)')
+          .join('\n');
+      return 'Día ${day.dayNumber} · ${day.title} (${day.focus}):\n$exLines';
+    }).join('\n\n');
+
     final replyText = customReply ??
-        '¡Listo! He configurado tu rutina con énfasis en $focusStr ($effectiveDays días, ${effectiveProfile.minutesPerSession} min/sesión). Revisa el desglose a continuación y presiona el botón "Aplicar rutina a mi plan" para dejarla guardada y lista en tu sección de Entrenar.';
+        '¡Listo! He diseñado tu rutina personalizada con énfasis en $focusStr distribuida en $effectiveDays días (${effectiveProfile.minutesPerSession} min/sesión) usando el equipo de Fit Body Gym:\n\n$daysSummary\n\nPresiona el botón "Aplicar" en la tarjeta inferior para guardarla en tu sección de Entrenar.';
 
     return AiChatResponse(
       reply: replyText,
@@ -1571,6 +1591,31 @@ class _AiChatPageState extends State<AiChatPage> {
         expectedPlanId: currentPlan?.id,
       ),
     );
+  }
+
+  String _buildLocalCoachingReply(
+    String userMessage,
+    UserProfileContext userContext,
+    WorkoutPlan? activeWorkout,
+  ) {
+    final norm = userMessage.toLowerCase();
+    final name = (userContext.fullName ?? 'atleta').split(' ').first;
+    final goal = userContext.goal;
+    final days = userContext.daysPerWeek;
+    final minutes = userContext.minutesPerSession;
+
+    if (norm.contains('hola') || norm.contains('buenos') || norm.contains('buenas')) {
+      return '¡Hola, $name! Tu perfil está configurado para "$goal" ($days días/semana, $minutes min por sesión). ¿Quieres que te arme una rutina distribuida para la semana o que ajustemos algún grupo muscular en específico?';
+    }
+
+    if (activeWorkout != null) {
+      final dayTitles = activeWorkout.days
+          .map((d) => 'Día ${d.dayNumber}: ${d.title} (${d.focus})')
+          .join(', ');
+      return 'Para tu objetivo de "$goal" ($days días/semana), actualmente tienes activa la rutina "${activeWorkout.name}" distribuida en: $dayTitles.\n\nSi quieres modificar algún día, cambiar el enfoque muscular (por ejemplo: más pecho, piernas, espalda o glúteos) o generar una nueva distribución semanal, dímelo y te preparo la propuesta con el botón para aplicarla.';
+    }
+
+    return 'Para tu objetivo de "$goal" ($days días/semana, $minutes min/sesión), puedo generarte una rutina completa con las máquinas y pesas de Fit Body Gym. Escribe por ejemplo "necesito una rutina para la semana" o indica qué músculos quieres priorizar y te daré la propuesta lista para aplicar.';
   }
 
   Future<void> sendMessage([String? suggested]) async {
@@ -1618,7 +1663,7 @@ class _AiChatPageState extends State<AiChatPage> {
           )
           .toList();
 
-      AiChatResponse? reply;
+      late AiChatResponse reply;
       try {
         reply = await aiChatService.reply(
           message: text,
@@ -1626,15 +1671,23 @@ class _AiChatPageState extends State<AiChatPage> {
           trainingProfile: userContext.toMergedMap(),
           activeWorkout: activeWorkout?.toJson(),
         );
-      } catch (_) {
-        // En caso de error de red o saldo, si pidió cambiar la rutina, generamos propuesta local
-        if (isChangeRequest) {
+      } catch (error) {
+        // En caso de error de red, saldo o Edge Function desactualizada:
+        // Si pidió crear/cambiar la rutina o mencionó músculos, generamos la propuesta localmente
+        if (isChangeRequest || focusMuscles.isNotEmpty) {
           final requestedDays = _extractRequestedDays(text);
           reply = _createFocusProposal(
             userContext: userContext,
             currentPlan: activeWorkout,
             focusMuscles: focusMuscles,
             requestedDays: requestedDays,
+          );
+        } else if (error is FunctionException && error.status == 403) {
+          // Si el usuario ya tiene acceso autorizado en la app pero la Edge Function
+          // en la nube aún no se ha redesplegado con authorized_access, respondemos localmente
+          reply = AiChatResponse(
+            reply: _buildLocalCoachingReply(text, userContext, activeWorkout),
+            action: const AiWorkoutAction(type: AiActionType.answer),
           );
         } else {
           rethrow;
