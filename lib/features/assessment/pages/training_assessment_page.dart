@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../training/data/demo_workout_generator.dart';
+import '../../training/data/workout_plan_store.dart';
 import '../data/training_profile_store.dart';
 import '../models/assessment_rules.dart';
 import '../models/assessment_step.dart';
@@ -303,6 +305,13 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
         hydrationLiters: assessmentNumber(answers['hydrationLiters']),
       );
       await store.save(profile);
+      try {
+        final planStore = WorkoutPlanStore(storageUserId: store.userId);
+        if (await planStore.load() == null) {
+          final generated = DemoWorkoutGenerator().generate(profile);
+          await planStore.save(generated);
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() => canLeave = true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -380,14 +389,18 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
     if (current.key == 'bodyFatEstimate') {
       final estimate = (answers[current.key] as num?)?.toDouble();
       final gender = answers['gender'] as String? ?? 'Hombre';
-      final currentEstimate = estimate ?? 25.0;
-      final asset = bodyFatAssetPath(gender, currentEstimate);
+      final currentEstimate = estimate ?? 22.0;
+      final stage = bodyFatStageFor(gender, currentEstimate);
+      final stages = bodyFatStagesForGender(gender);
       return Column(
         children: [
           AssessmentBody(
             fullness: ((currentEstimate - 8) / 47).clamp(0.0, 1.0),
             gender: gender,
-            imageAsset: asset,
+            imageAsset: stage.assetPath,
+            stageBadge:
+                'NIVEL ${stage.index} DE ${stages.length} · ${stage.category.toUpperCase()} (${stage.rangeLabel})',
+            stageDescription: stage.description,
           ),
           Card(
             color: AppColors.surface,
@@ -435,12 +448,64 @@ class _TrainingAssessmentPageState extends State<TrainingAssessmentPage> {
                     ),
                   ),
                   const SizedBox(height: 4),
+                  Text(
+                    '${stage.category} · ${stage.description}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                   const Text(
                     'Rango visual orientativo elegido por ti',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Selecciona uno de los 8 niveles o desliza la barra:',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final item in stages)
+                  ChoiceChip(
+                    selected: stage.index == item.index,
+                    showCheckmark: false,
+                    selectedColor: AppColors.brand,
+                    backgroundColor: AppColors.inputFill,
+                    side: BorderSide(
+                      color: stage.index == item.index
+                          ? AppColors.brand
+                          : AppColors.outline,
+                    ),
+                    label: Text(
+                      '${item.rangeLabel} · ${item.category}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: stage.index == item.index
+                            ? Colors.white
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    onSelected: (_) =>
+                        change(current.key, item.representativeValue),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             Row(

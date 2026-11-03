@@ -41,16 +41,29 @@ class DemoWorkoutGenerator {
       final candidates = List<WorkoutExercise>.of(pool);
       int score(WorkoutExercise e) {
         var value = 0;
+        final isOfficialGym =
+            e.catalogId != null && e.catalogId!.startsWith('ex_');
+        if (isOfficialGym) {
+          value += 5;
+        }
+        if (normalized(profile.trainingLocation).contains('gimnasio') &&
+            e.equipment == 'bodyweight') {
+          value -= 40;
+        }
         final lower = [
           'squat',
           'hinge',
           'hip_extension',
           'knee_flexion',
           'ankle',
+          'lunge',
+          'hip_thrust',
+          'plantar_flexion',
         ].contains(e.movementPattern);
         if (profile.daysPerWeek >= 4 && lower == day.isOdd) value += 40;
         if (profile.priorityMuscles.any(
-          (m) => normalized(e.muscleGroup).contains(normalized(m)),
+          (m) => normalized(e.muscleGroup).contains(normalized(m)) ||
+              e.primaryMuscles.any((pm) => normalized(pm).contains(normalized(m))),
         )) {
           value += 20;
         }
@@ -69,7 +82,7 @@ class DemoWorkoutGenerator {
             days.last.exercises.any((p) => p.stableId == e.stableId)) {
           value -= 30;
         }
-        if (e.mediaStatus == 'video') value += 1;
+        if (e.mediaStatus == 'video') value += 3;
         return value;
       }
 

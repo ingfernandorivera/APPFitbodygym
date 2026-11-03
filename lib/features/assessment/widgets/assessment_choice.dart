@@ -170,12 +170,16 @@ class AssessmentBody extends StatelessWidget {
     this.representation = 'Neutral',
     this.gender = 'Hombre',
     this.imageAsset,
+    this.stageBadge,
+    this.stageDescription,
   });
 
   final double fullness;
   final String representation;
   final String gender;
   final String? imageAsset;
+  final String? stageBadge;
+  final String? stageDescription;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -199,12 +203,35 @@ class AssessmentBody extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (stageBadge != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: AppColors.brand.withValues(alpha: 0.45),
+                ),
+              ),
+              child: Text(
+                stageBadge!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.brand,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (imageAsset != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                height: 250,
-                width: 185,
+                height: 255,
+                width: 190,
                 decoration: BoxDecoration(
                   color: const Color(0xFF111113),
                   borderRadius: BorderRadius.circular(16),
@@ -212,19 +239,25 @@ class AssessmentBody extends StatelessWidget {
                     color: AppColors.brand.withValues(alpha: 0.4),
                   ),
                 ),
-                child: Image.asset(
-                  imageAsset!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Center(
-                    child: SizedBox(
-                      height: 220,
-                      width: 170,
-                      child: CustomPaint(
-                        painter: _BodyPainter(
-                          fullness,
-                          gender.toLowerCase() == 'mujer'
-                              ? 'Caderas amplias'
-                              : 'Hombros amplios',
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Image.asset(
+                    imageAsset!,
+                    key: ValueKey(imageAsset),
+                    height: 255,
+                    width: 190,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Center(
+                      child: SizedBox(
+                        height: 220,
+                        width: 170,
+                        child: CustomPaint(
+                          painter: _BodyPainter(
+                            fullness,
+                            gender.toLowerCase() == 'mujer'
+                                ? 'Caderas amplias'
+                                : 'Hombros amplios',
+                          ),
                         ),
                       ),
                     ),
@@ -245,6 +278,18 @@ class AssessmentBody extends StatelessWidget {
                 ),
               ),
             ),
+          if (stageDescription != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              '• $stageDescription',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

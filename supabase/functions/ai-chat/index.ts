@@ -22,6 +22,10 @@ type ChatMessage = {
 type MemberProfile = {
   membership_active?: boolean | null;
   membership_end?: string | null;
+  authorized_access?: boolean | null;
+  authorized_access_expires_at?: string | null;
+  app_access_status?: string | null;
+  app_access_expires_at?: string | null;
 };
 
 function validHistory(value: unknown): ChatMessage[] {
@@ -106,6 +110,24 @@ function todayInElSalvador(): string {
 }
 
 function hasActiveMembership(profile: MemberProfile): boolean {
+  if (profile.app_access_status === "revoked") {
+    return false;
+  }
+
+  const today = todayInElSalvador();
+
+  // 1. Acceso autorizado manual o panel
+  if (profile.authorized_access === true) {
+    if (!profile.authorized_access_expires_at) return true;
+    if (profile.authorized_access_expires_at.slice(0, 10) >= today) return true;
+  }
+
+  if (profile.app_access_status === "active") {
+    if (!profile.app_access_expires_at) return true;
+    if (profile.app_access_expires_at.slice(0, 10) >= today) return true;
+  }
+
+  // 2. Membresía pagada
   if (profile.membership_active !== true) {
     return false;
   }
@@ -115,8 +137,6 @@ function hasActiveMembership(profile: MemberProfile): boolean {
   }
 
   const membershipEnd = profile.membership_end.slice(0, 10);
-  const today = todayInElSalvador();
-
   return membershipEnd >= today;
 }
 
@@ -218,7 +238,10 @@ Deno.serve(async (request) => {
    * 2. VERIFICAR MEMBRESÍA
    */
   const profileUrl = new URL(`${supabaseUrl}/rest/v1/member_profiles`);
-  profileUrl.searchParams.set("select", "membership_active,membership_end");
+  profileUrl.searchParams.set(
+    "select",
+    "membership_active,membership_end,authorized_access,authorized_access_expires_at,app_access_status,app_access_expires_at",
+  );
   profileUrl.searchParams.set("auth_user_id", `eq.${userId}`);
   profileUrl.searchParams.set("limit", "1");
 

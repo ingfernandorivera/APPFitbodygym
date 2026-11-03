@@ -69,24 +69,30 @@ class ExerciseCatalogRepository {
     final metadata = row['metadata'] is Map
         ? Map<String, dynamic>.from(row['metadata'] as Map)
         : <String, dynamic>{};
-    final media = row['media_url'] as String?;
+    final rawMedia = row['media_url'] as String?;
+    final media = (rawMedia != null && rawMedia.isNotEmpty)
+        ? rawMedia
+        : local?.mediaUrl;
+    final mediaStatus = (media == null || media.isEmpty)
+        ? 'missing'
+        : (row['media_type'] == 'video' || local?.mediaStatus == 'video' || media.endsWith('.mp4'))
+        ? 'video'
+        : 'image';
     return WorkoutExercise.fromJson({
       if (local != null) ...local.toJson(),
       'id': local?.id ?? row['slug'] ?? row['id'],
       'catalogId': local?.stableId ?? row['slug'] ?? row['id'],
       'name': name,
-      'muscleGroup': row['muscle_group'] ?? 'General',
+      'muscleGroup': row['muscle_group'] ?? local?.muscleGroup ?? 'General',
       'equipment': local?.equipment ?? row['equipment'],
       'sets': local?.sets ?? 3,
       'repetitions': local?.repetitions ?? '10-12',
       'restSeconds': local?.restSeconds ?? 60,
-      'instructions': row['instructions'] ?? '',
+      'instructions': (row['instructions'] as String?)?.isNotEmpty == true
+          ? row['instructions']
+          : (local?.instructions ?? ''),
       'mediaUrl': media,
-      'mediaStatus': media == null || media.isEmpty
-          ? 'missing'
-          : row['media_type'] == 'video'
-          ? 'video'
-          : 'image',
+      'mediaStatus': mediaStatus,
       'movementPattern': metadata['movementPattern'] ?? local?.movementPattern,
       'primaryMuscles':
           metadata['primaryMuscles'] ?? local?.primaryMuscles ?? <String>[],

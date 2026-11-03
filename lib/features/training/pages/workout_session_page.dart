@@ -40,6 +40,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   int prescribedRest = 0;
   bool saving = false;
   String? error;
+  String? expandedExerciseId;
   final previous = <String, ExerciseResult>{};
 
   int get remaining =>
@@ -49,6 +50,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   void initState() {
     super.initState();
     inputs = widget.day.exercises.map(_ExerciseInput.new).toList();
+    if (inputs.isNotEmpty) {
+      expandedExerciseId = inputs.first.exercise.stableId;
+    }
     // Ticker para el reloj superior en vivo
     elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
@@ -161,9 +165,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     setState(() {
       if (input.isCompleted) {
         input.setCompleted(false);
+        expandedExerciseId = input.exercise.stableId;
       } else {
         input.setCompleted(true);
         startRest(input.exercise.restSeconds, reset: true);
+        final nextPending = inputs.where((e) => !e.isCompleted).firstOrNull;
+        expandedExerciseId = nextPending?.exercise.stableId;
       }
     });
   }
@@ -426,32 +433,86 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                       ),
                     ),
                   ),
-                // Indicación superior
-                if (completedInputs.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      '${completedInputs.length} de ${inputs.length} ejercicios completados',
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                // Barra de progreso e indicación superior
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17171B),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF282830)),
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              completedInputs.isNotEmpty
+                                  ? '${completedInputs.length} de ${inputs.length} ejercicios completados'
+                                  : '${inputs.length} ejercicios programados hoy',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            inputs.isEmpty
+                                ? '0%'
+                                : '${((completedInputs.length / inputs.length) * 100).round()}%',
+                            style: TextStyle(
+                              color: completedInputs.length == inputs.length &&
+                                      inputs.isNotEmpty
+                                  ? const Color(0xFF2ECC71)
+                                  : AppColors.brand,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: inputs.isEmpty
+                              ? 0.0
+                              : (completedInputs.length / inputs.length)
+                                  .clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: const Color(0xFF26262E),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            completedInputs.length == inputs.length &&
+                                    inputs.isNotEmpty
+                                ? const Color(0xFF2ECC71)
+                                : AppColors.brand,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 // LISTADO DE EJERCICIOS PENDIENTES
                 ...pendingInputs.asMap().entries.map((entry) {
                   final index = entry.key;
                   final input = entry.value;
-                  return _buildExerciseCard(
-                    input: input,
-                    index: index + 1,
-                    isCompleted: false,
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildExerciseCard(
+                      input: input,
+                      index: index + 1,
+                      isCompleted: false,
+                    ),
                   );
                 }),
                 // SECCIÓN "COMPLETADOS" (Indicación 4 y 5)
                 if (completedInputs.isNotEmpty) ...[
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   const Text(
                     'Completados',
                     style: TextStyle(
@@ -464,10 +525,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                   ...completedInputs.asMap().entries.map((entry) {
                     final index = entry.key;
                     final input = entry.value;
-                    return _buildExerciseCard(
-                      input: input,
-                      index: pendingInputs.length + index + 1,
-                      isCompleted: true,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildExerciseCard(
+                        input: input,
+                        index: pendingInputs.length + index + 1,
+                        isCompleted: true,
+                      ),
                     );
                   }),
                 ],
@@ -517,19 +581,23 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     required bool isCompleted,
   }) {
     final ex = input.exercise;
+    final isExpanded = expandedExerciseId == ex.stableId || inputs.length == 1;
+    final hasVideo = ex.mediaUrl != null && ex.mediaUrl!.isNotEmpty;
     final cardBg = isCompleted
         ? const Color(0xFF141416)
         : const Color(0xFF1B1B1E);
     final border = isCompleted
         ? const Color(0xFF222226)
-        : const Color(0xFF2C2C32);
+        : (isExpanded
+              ? AppColors.brand.withValues(alpha: 0.55)
+              : const Color(0xFF2C2C32));
     final textColor = isCompleted ? AppColors.textMuted : Colors.white;
 
     return Material(
       color: cardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: border),
+        side: BorderSide(color: border, width: isExpanded && !isCompleted ? 1.5 : 1),
       ),
       child: Column(
         children: [
@@ -573,7 +641,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                     borderRadius: BorderRadius.circular(12),
                     child: Row(
                       children: [
-                        // Miniatura con número (Screenshot 2)
+                        // Miniatura con número en Rojo Fit Body Gym e indicador de video
                         Stack(
                           children: [
                             Container(
@@ -582,11 +650,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF242428),
                                 borderRadius: BorderRadius.circular(12),
+                                border: hasVideo
+                                    ? Border.all(
+                                        color: AppColors.brand.withValues(alpha: 0.4),
+                                      )
+                                    : null,
                               ),
-                              child: const Center(
+                              child: Center(
                                 child: Icon(
-                                  Icons.fitness_center,
-                                  size: 26,
+                                  hasVideo
+                                      ? Icons.play_circle_fill_rounded
+                                      : Icons.fitness_center,
+                                  size: 28,
                                   color: AppColors.brand,
                                 ),
                               ),
@@ -600,7 +675,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                   vertical: 1,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2196F3),
+                                  color: AppColors.brand,
                                   borderRadius: BorderRadius.circular(5),
                                 ),
                                 child: Text(
@@ -616,7 +691,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                           ],
                         ),
                         const SizedBox(width: 12),
-                        // Nombre y repeticiones
+                        // Nombre, grupo muscular y repeticiones
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,17 +705,44 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                '${input.sets.length}x ${input.repsSummary}',
-                                style: const TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 13,
-                                ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.brand.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(5),
+                                    ),
+                                    child: Text(
+                                      ex.muscleGroup,
+                                      style: const TextStyle(
+                                        color: AppColors.brand,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${input.sets.length}x ${input.repsSummary}',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        // Flecha a la derecha para ver detalle y video (Screenshot 2)
+                        // Flecha a la derecha para ver detalle y video
                         const Icon(
                           Icons.chevron_right,
                           color: Color(0xFF7E7E88),
@@ -653,17 +755,40 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               ],
             ),
           ),
-          // Fila inferior: tiempo de descanso sugerido y botón Play
+          // Fila inferior: tiempo de descanso sugerido, botón Play y botón de desplegar series
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '${_formatSeconds(ex.restSeconds)} (Descanso entre series)',
-                    style: TextStyle(
-                      color: isCompleted ? Colors.white38 : Colors.white70,
-                      fontSize: 13,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      setState(() {
+                        expandedExerciseId =
+                            expandedExerciseId == ex.stableId ? null : ex.stableId;
+                      });
+                    },
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${_formatSeconds(ex.restSeconds)} (Descanso entre series)',
+                            style: TextStyle(
+                              color: isCompleted ? Colors.white38 : Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          isExpanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: AppColors.textMuted,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -681,131 +806,132 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               ],
             ),
           ),
-          // Panel compacto de series para edición precisa y compatibilidad con tests
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-            child: Column(
-              children: [
-                ...input.sets.asMap().entries.map((entry) {
-                  final setIndex = entry.key;
-                  final s = entry.value;
-                  return Padding(
-                    key: ObjectKey(s),
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Text(
-                          'S${setIndex + 1}',
-                          style: TextStyle(
-                            color: isCompleted
-                                ? AppColors.textMuted
-                                : Colors.white70,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+          // Panel desplegable de series (solo abierto en el ejercicio activo o seleccionado)
+          if (isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Column(
+                children: [
+                  ...input.sets.asMap().entries.map((entry) {
+                    final setIndex = entry.key;
+                    final s = entry.value;
+                    return Padding(
+                      key: ObjectKey(s),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Text(
+                            'S${setIndex + 1}',
+                            style: TextStyle(
+                              color: isCompleted
+                                  ? AppColors.textMuted
+                                  : Colors.white70,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 3,
-                          child: SizedBox(
-                            height: 40,
-                            child: TextField(
-                              controller: s.weight,
-                              enabled: !saving,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 3,
+                            child: SizedBox(
+                              height: 40,
+                              child: TextField(
+                                controller: s.weight,
+                                enabled: !saving,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                style: TextStyle(
+                                  color: isCompleted
+                                      ? AppColors.textMuted
+                                      : Colors.white,
+                                  fontSize: 13,
+                                ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Peso (kg)',
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
                                   ),
-                              style: TextStyle(
-                                color: isCompleted
-                                    ? AppColors.textMuted
-                                    : Colors.white,
-                                fontSize: 13,
-                              ),
-                              decoration: const InputDecoration(
-                                labelText: 'Peso (kg)',
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 3,
-                          child: SizedBox(
-                            height: 40,
-                            child: TextField(
-                              controller: s.reps,
-                              enabled: !saving,
-                              keyboardType: TextInputType.number,
-                              style: TextStyle(
-                                color: isCompleted
-                                    ? AppColors.textMuted
-                                    : Colors.white,
-                                fontSize: 13,
-                              ),
-                              decoration: InputDecoration(
-                                labelText: ex.type == 'cardio'
-                                    ? 'Minutos'
-                                    : 'Reps',
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 3,
+                            child: SizedBox(
+                              height: 40,
+                              child: TextField(
+                                controller: s.reps,
+                                enabled: !saving,
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(
+                                  color: isCompleted
+                                      ? AppColors.textMuted
+                                      : Colors.white,
+                                  fontSize: 13,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: ex.type == 'cardio'
+                                      ? 'Minutos'
+                                      : 'Reps',
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Checkbox(
-                          value: s.completed,
-                          onChanged: saving
-                              ? null
-                              : (v) {
-                                  setState(() {
-                                    s.completed = v ?? false;
-                                  });
-                                  if (v == true) {
-                                    startRest(ex.restSeconds, reset: true);
-                                  }
-                                },
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    TextButton.icon(
-                      onPressed: !saving && input.sets.length < 8
-                          ? () => setState(() => input.sets.add(_SetInput()))
-                          : null,
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text(
-                        'Añadir serie',
-                        style: TextStyle(fontSize: 12),
+                          const SizedBox(width: 6),
+                          Checkbox(
+                            value: s.completed,
+                            onChanged: saving
+                                ? null
+                                : (v) {
+                                    setState(() {
+                                      s.completed = v ?? false;
+                                    });
+                                    if (v == true) {
+                                      startRest(ex.restSeconds, reset: true);
+                                    }
+                                  },
+                          ),
+                        ],
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () => _openExerciseDetail(input),
-                      child: const Text(
-                        'Ver video técnica',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.brand,
+                    );
+                  }),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      TextButton.icon(
+                        onPressed: !saving && input.sets.length < 8
+                            ? () => setState(() => input.sets.add(_SetInput()))
+                            : null,
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text(
+                          'Añadir serie',
+                          style: TextStyle(fontSize: 12),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      TextButton(
+                        onPressed: () => _openExerciseDetail(input),
+                        child: const Text(
+                          'Ver video técnica',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

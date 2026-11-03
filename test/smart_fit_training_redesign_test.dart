@@ -39,7 +39,7 @@ void main() {
 
       // Título "Rutinas" y pestañas
       expect(find.text('Rutinas'), findsOneWidget);
-      expect(find.text('Smart'), findsOneWidget);
+      expect(find.text('Entrenamiento'), findsOneWidget);
       expect(find.text('Explorar'), findsOneWidget);
       expect(find.text('Guardados'), findsOneWidget);
 

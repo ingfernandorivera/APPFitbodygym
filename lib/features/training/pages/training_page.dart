@@ -314,7 +314,11 @@ class _TrainingPageState extends State<TrainingPage> {
   }) {
     final durationMin = day.exercises.length * 4 + 10;
     final letter = _letterForDay(day.dayNumber);
-    final titleText = day.focus.isNotEmpty ? day.focus : day.title;
+    final titleText = day.title.isNotEmpty
+        ? day.title
+        : (day.focus.isNotEmpty ? day.focus : 'Rutina $letter');
+    final previewExercises = day.exercises.take(3).toList();
+    final extraCount = day.exercises.length - previewExercises.length;
 
     final cardBg = isCompleted
         ? const Color(0xFF141417)
@@ -483,6 +487,79 @@ class _TrainingPageState extends State<TrainingPage> {
                 ),
               ],
             ),
+            if (previewExercises.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.only(top: 10),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: Color(0xFF26262C))),
+                ),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    ...previewExercises.map((ex) {
+                      final hasVid =
+                          ex.mediaUrl != null && ex.mediaUrl!.isNotEmpty;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF242429),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (hasVid) ...[
+                              const Icon(
+                                Icons.play_circle_fill,
+                                size: 12,
+                                color: AppColors.brand,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Flexible(
+                              child: Text(
+                                ex.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    if (extraCount > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.brand.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '+$extraCount más',
+                          style: const TextStyle(
+                            color: AppColors.brand,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -558,14 +635,17 @@ class _TrainingPageState extends State<TrainingPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Pestañas / Tabs Smart | Explorar | Guardados (Screenshot 1)
-              Row(
+              // Pestañas adaptables: Entrenamiento | Explorar | Guardados
+              Wrap(
+                spacing: 22,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Smart',
+                        'Entrenamiento',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -574,7 +654,7 @@ class _TrainingPageState extends State<TrainingPage> {
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        width: 44,
+                        width: 112,
                         height: 3,
                         decoration: BoxDecoration(
                           color: AppColors.brand,
@@ -583,7 +663,6 @@ class _TrainingPageState extends State<TrainingPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 24),
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
@@ -602,8 +681,7 @@ class _TrainingPageState extends State<TrainingPage> {
                       ),
                     ),
                   ),
-                  if (plan != null) ...[
-                    const SizedBox(width: 24),
+                  if (plan != null)
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
@@ -620,7 +698,6 @@ class _TrainingPageState extends State<TrainingPage> {
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
               const SizedBox(height: 14),

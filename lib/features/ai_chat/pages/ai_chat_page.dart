@@ -819,6 +819,7 @@ class _AiChatPageState extends State<AiChatPage> {
           final muscleKeywords = _extractMuscleKeywords(dayFocusNorm);
 
           final candidates = ExerciseCatalog.exercises.where((e) {
+            if (e.catalogId == null || !e.catalogId!.startsWith('ex_')) return false;
             if (currentDayExercises.any((ce) => ce.stableId == e.stableId)) return false;
             if (profile != null && !allowedExercise(e, profile)) return false;
             if (muscleKeywords.isNotEmpty) {
@@ -848,17 +849,30 @@ class _AiChatPageState extends State<AiChatPage> {
 
     if (parsedDays.isEmpty) return null;
 
+    int parsedWeeks = currentPlan?.totalWeeks ?? 4;
+    final weeksMatch = RegExp(
+      r'(?:durante|por|ciclo\s+de|plan\s+de|recomendad[oa]\s+por)?\s*(\d+)\s*semanas?',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (weeksMatch != null) {
+      final w = int.tryParse(weeksMatch.group(1) ?? '');
+      if (w != null && w >= 1 && w <= 12) {
+        parsedWeeks = w;
+      }
+    }
+
     return WorkoutPlan(
       id: currentPlan?.id,
       version: (currentPlan?.version ?? 0) + 1,
       name: planName,
       goal: goal,
-      plannedMinutes: 60,
+      plannedMinutes: profile?.minutesPerSession ?? 60,
       days: parsedDays,
       changeReason: 'Rutina adaptada con los ejercicios exactos solicitados',
       createdAt: DateTime.now(),
       block: 1,
       week: 1,
+      totalWeeks: parsedWeeks,
       source: 'ai',
       isDemo: false,
     );
