@@ -126,6 +126,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
           pages: [
             HomePage(
               membership: membership,
+              previewMode: widget.previewMode,
               assessmentStore: assessmentStore,
               onOpenInfo: () => setState(() => selectedIndex = 4),
               onOpenAiChat: () {
